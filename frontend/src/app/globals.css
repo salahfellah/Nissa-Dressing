@@ -1,0 +1,176 @@
+@import 'tailwindcss';
+
+/*
+ * Charte Nissa Dressing — source de vérité unique des couleurs et typographies.
+ * Tailwind v4 génère les utilitaires (bg-orDore, text-brunProfond…) à partir de ces
+ * tokens : aucune couleur ne doit être écrite en dur dans un composant.
+ */
+@theme {
+  --color-orDore: #c8a96a;
+  --color-orDoreFonce: #b09355;
+  --color-beigeClair: #f6f1e8;
+  --color-sable: #e8e1d6;
+  --color-taupe: #b8ada0;
+  --color-brunProfond: #4a4136;
+  --color-noirIntense: #111111;
+
+  /* Les polices sont chargées par next/font (voir app/layout.tsx), qui expose
+     --font-*-loaded. Le repli couvre le cas où le CDN Google est injoignable. */
+  --font-montserrat: var(--font-montserrat-loaded), ui-sans-serif, system-ui, sans-serif;
+  --font-playfair: var(--font-playfair-loaded), ui-serif, Georgia, serif;
+
+  --radius-sm: 0.125rem;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-beigeClair);
+    color: var(--color-noirIntense);
+    font-family: var(--font-montserrat);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Anneau de focus visible au clavier, invisible au clic souris. */
+  :focus-visible {
+    outline: 2px solid var(--color-orDore);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-orDore);
+    color: #ffffff;
+  }
+}
+
+@layer utilities {
+  .fade-in {
+    animation: fadeIn 0.4s ease-in-out;
+  }
+
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Masque la barre de défilement des rails de catégories, sans bloquer le scroll. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
+ * Mise en forme du markdown des pages légales (rendu en HTML brut).
+ * Défini ici plutôt qu'avec le plugin typography : les huit pages sont les seuls
+ * contenus concernés, et la charte impose ses propres tailles.
+ */
+.legal-content h1 {
+  font-family: var(--font-playfair);
+  font-size: 1.875rem;
+  line-height: 1.2;
+  color: var(--color-noirIntense);
+  margin: 0 0 1.5rem;
+}
+
+.legal-content h2 {
+  font-family: var(--font-playfair);
+  font-size: 1.25rem;
+  color: var(--color-brunProfond);
+  margin: 2.5rem 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-sable);
+}
+
+.legal-content h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-brunProfond);
+  margin: 1.75rem 0 0.5rem;
+}
+
+.legal-content p {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  margin: 0 0 1rem;
+}
+
+.legal-content ul,
+.legal-content ol {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  margin: 0 0 1.25rem;
+  padding-left: 1.5rem;
+}
+
+.legal-content ul {
+  list-style: disc;
+}
+.legal-content ol {
+  list-style: decimal;
+}
+.legal-content li {
+  margin-bottom: 0.5rem;
+}
+
+.legal-content strong {
+  font-weight: 600;
+  color: var(--color-noirIntense);
+}
+
+.legal-content a {
+  color: var(--color-orDore);
+  text-decoration: underline;
+}
+
+.legal-content code {
+  background: var(--color-sable);
+  padding: 0.1rem 0.35rem;
+  border-radius: 2px;
+  font-size: 0.85em;
+}
+
+.legal-content hr {
+  border: none;
+  border-top: 1px solid var(--color-sable);
+  margin: 2rem 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

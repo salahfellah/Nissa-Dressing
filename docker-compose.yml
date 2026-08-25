@@ -1,0 +1,55 @@
+# Services de développement de Nissa Dressing.
+#
+#   docker compose up -d       démarre PostgreSQL et Mailpit
+#   docker compose down        arrête les services (les données sont conservées)
+#   docker compose down -v     arrête et SUPPRIME les données
+#
+# Les identifiants ci-dessous sont ceux du poste de développement uniquement.
+# En production, la base est fournie par l'hébergeur et DATABASE_URL est injectée
+# par variable d'environnement.
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: nissa-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nissa
+      POSTGRES_PASSWORD: nissa_dev_password
+      POSTGRES_DB: nissa_dressing
+    ports:
+      # 5435 côté hôte : ce poste fait déjà tourner un PostgreSQL local sur 5432
+      # et d'autres projets sur 5433 / 5434.
+      - '5435:5432'
+    volumes:
+      # Depuis PostgreSQL 18, l'image officielle attend le montage sur
+      # /var/lib/postgresql (et non /var/lib/postgresql/data) : elle place les
+      # données dans un sous-dossier nommé d'après la version majeure, ce qui
+      # rend les futures montées de version possibles avec pg_upgrade.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      # Les migrations ne doivent pas démarrer avant que la base accepte les connexions.
+      test: ['CMD-SHELL', 'pg_isready -U nissa -d nissa_dressing']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Boîte mail de développement : capture tous les e-mails transactionnels
+  # (inscription, modération, commandes, retours) sans rien envoyer vers l'extérieur.
+  # Interface web : http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: nissa-mailpit
+    restart: unless-stopped
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # interface web
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+volumes:
+  postgres_data:
+    name: nissa_postgres_data

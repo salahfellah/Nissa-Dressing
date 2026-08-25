@@ -1,0 +1,394 @@
+// Schéma de données Nissa Dressing — aligné sur le CDC « Marketplace 1500 » §3.
+// L'URL de connexion vit dans prisma.config.ts (exigence Prisma 7).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ————————————————————————————————————————————————————————————
+// Énumérations — miroir de packages/shared/src/enums.ts
+// ————————————————————————————————————————————————————————————
+
+enum Role {
+  MEMBER
+  ADMIN
+}
+
+/// Machine à états du membre — CDC §3.1 / §3.2.
+enum MemberStatus {
+  PENDING_REVIEW
+  REJECTED
+  AWAITING_PAYMENT
+  PAYMENT_DONE
+  ONBOARDING
+  MEMBER
+}
+
+enum ListingStatus {
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  SOLD
+}
+
+enum PackageFormat {
+  PETIT
+  MOYEN
+  GRAND
+}
+
+enum ItemCondition {
+  NEUF_ETIQUETTE
+  NEUF
+  TRES_BON_ETAT
+  BON_ETAT
+  SATISFAISANT
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  SHIPPED
+  RECEIVED
+  CANCELLED
+  REFUNDED
+}
+
+enum ReturnStatus {
+  PENDING_REVIEW
+  ACCEPTED
+  REJECTED
+  RETURN_SHIPPED
+  REFUNDED
+}
+
+enum StripeConnectStatus {
+  NOT_STARTED
+  PENDING
+  COMPLETE
+}
+
+enum ReturnReason {
+  DAMAGED
+  NOT_AS_DESCRIBED
+  WRONG_ITEM
+  NOT_RECEIVED
+  OTHER
+}
+
+// ————————————————————————————————————————————————————————————
+// Membres
+// ————————————————————————————————————————————————————————————
+
+model User {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String
+  nom          String
+  prenom       String
+  pseudo       String @unique
+
+  role   Role         @default(MEMBER)
+  status MemberStatus @default(PENDING_REVIEW)
+
+  /// Réponse à la question d'éligibilité « Es-tu voilée ? » (CDC §3.1).
+  /// Toujours vraie en base : une réponse négative bloque l'inscription en amont.
+  isVeiled Boolean @default(true)
+
+  /// Chemin du fichier audio de serment (CDC §3.1). Donnée vocale sensible :
+  /// jamais exposée hors back-office, purgée au refus définitif d'une candidature.
+  audioOathPath String?
+
+  /// Motif de refus saisi par l'administratrice (CDC §3.1, motif optionnel).
+  rejectionReason String?
+  reviewedAt      DateTime?
+
+  // Adresse postale — CDC §3.2
+  recipientName String?
+  addressLine1  String?
+  addressLine2  String?
+  postalCode    String?
+  city          String?
+  country       String? @default("France")
+  phone         String?
+
+  // Stripe — aucune donnée bancaire n'est stockée ici (CDC §4.3)
+  stripeAccountId     String?
+  stripeCustomerId    String?
+  stripeConnectStatus StripeConnectStatus @default(NOT_STARTED)
+
+  /// Frais d'accès de 5 € réglés — accès à vie (CDC §1.2).
+  accessFeePaidAt DateTime?
+  /// Fin du mois de boost offert à l'inscription (CDC §3.1).
+  freeBoostUntil  DateTime?
+
+  acceptedTermsAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listings         Listing[]       @relation("SellerListings")
+  moderatedListings Listing[]      @relation("ListingModerator")
+  favorites        Favorite[]
+  ordersAsBuyer    Order[]         @relation("BuyerOrders")
+  ordersAsSeller   Order[]         @relation("SellerOrders")
+  messages         Message[]
+  returnRequests   ReturnRequest[]
+  refreshTokens    RefreshToken[]
+  passwordResets   PasswordReset[]
+
+  @@index([status])
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ————————————————————————————————————————————————————————————
+// Annonces — CDC §3.3 / §3.5
+// ————————————————————————————————————————————————————————————
+
+model Listing {
+  id       String @id @default(cuid())
+  sellerId String
+
+  title         String
+  categoryId    String
+  subcategoryId String
+  size          String
+  material      String
+  color         String
+  condition     ItemCondition
+  /// null = « Sans marque » (CDC §3.3).
+  brand         String?
+  priceCents    Int
+  photos        String[]
+  packageFormat PackageFormat
+  description   String        @db.Text
+
+  status          ListingStatus @default(PENDING_REVIEW)
+  rejectionReason String?
+  moderatedAt     DateTime?
+  moderatedById   String?
+
+  /// Mise en avant payante — l'annonce remonte en tête des résultats (CDC §3.5).
+  boostedUntil            DateTime?
+  stripeBoostSubscriptionId String?
+
+  viewCount Int @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+  soldAt      DateTime?
+
+  seller      User       @relation("SellerListings", fields: [sellerId], references: [id], onDelete: Cascade)
+  moderatedBy User?      @relation("ListingModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+  favorites   Favorite[]
+  order       Order?
+
+  @@index([status, createdAt])
+  @@index([categoryId, status])
+  @@index([subcategoryId, status])
+  @@index([sellerId, status])
+  @@index([boostedUntil])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([listingId])
+}
+
+// ————————————————————————————————————————————————————————————
+// Commandes — CDC §3.6 (séquestre Stripe Connect)
+// ————————————————————————————————————————————————————————————
+
+model Order {
+  id        String @id @default(cuid())
+  /// Référence lisible imprimée sur le bordereau d'envoi.
+  reference String @unique
+
+  /// Une annonce ne peut donner lieu qu'à une seule commande : l'article est unique
+  /// et l'annonce est retirée du catalogue dès la vente (CDC §3.6).
+  listingId String @unique
+  buyerId   String
+  sellerId  String
+
+  itemPriceCents  Int
+  shippingCents   Int
+  commissionCents Int
+  totalCents      Int
+  /// Montant reversé à la vendeuse à la confirmation de réception.
+  sellerPayoutCents Int
+
+  status OrderStatus @default(PENDING_PAYMENT)
+
+  // Adresse de livraison figée au moment de la commande (elle alimente le bordereau PDF).
+  shipRecipientName String
+  shipLine1         String
+  shipLine2         String?
+  shipPostalCode    String
+  shipCity          String
+  shipCountry       String
+  shipPhone         String?
+
+  // Adresse de l'expéditrice, figée elle aussi (CDC §3.6 : bordereau généré à partir
+  // des informations des deux parties).
+  fromRecipientName String
+  fromLine1         String
+  fromLine2         String?
+  fromPostalCode    String
+  fromCity          String
+  fromCountry       String
+  fromPhone         String?
+
+  // Trois identifiants distincts, et non un seul : Stripe les exige tels quels.
+  // La session (cs_…) existe dès la création de la commande ; le PaymentIntent
+  // (pi_…) et la charge (ch_…) n'apparaissent qu'une fois l'acheteuse payée.
+  // Le remboursement veut le PaymentIntent, le transfert veut la charge.
+  stripeCheckoutSessionId String?
+  stripePaymentIntentId   String?
+  stripeChargeId          String?
+  stripeTransferId        String?
+  stripeRefundId          String?
+
+  paidAt     DateTime?
+  shippedAt  DateTime?
+  receivedAt DateTime?
+  refundedAt DateTime?
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing       Listing        @relation(fields: [listingId], references: [id])
+  buyer         User           @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller        User           @relation("SellerOrders", fields: [sellerId], references: [id])
+  messages      Message[]
+  returnRequest ReturnRequest?
+
+  @@index([buyerId, status])
+  @@index([sellerId, status])
+  @@index([status])
+}
+
+/// Messagerie liée à la commande — CDC §2.2 / §3.6.
+model Message {
+  id       String @id @default(cuid())
+  orderId  String
+  senderId String
+
+  body   String    @db.Text
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender User  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+// ————————————————————————————————————————————————————————————
+// Retours & remboursements — CDC §3.7
+// ————————————————————————————————————————————————————————————
+
+model ReturnRequest {
+  id            String @id @default(cuid())
+  orderId       String @unique
+  requestedById String
+
+  reason      ReturnReason
+  description String       @db.Text
+  photos      String[]
+
+  status   ReturnStatus @default(PENDING_REVIEW)
+  adminNote String?
+
+  returnWaybillGeneratedAt DateTime?
+  reviewedAt               DateTime?
+  refundedAt               DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order       Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  requestedBy User  @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+// ————————————————————————————————————————————————————————————
+// Support & administration
+// ————————————————————————————————————————————————————————————
+
+/// Formulaire de contact de la page d'aide — CDC §3.8.
+model ContactRequest {
+  id      String @id @default(cuid())
+  email   String
+  /// Pseudo ou kunya (CDC §3.8).
+  pseudo  String
+  message String @db.Text
+
+  handledAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([handledAt])
+}
+
+/// Paramètres de plateforme (commission, boost, frais de port) — CDC §3.9.
+/// Une seule ligne, clé « platform ».
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+/// Journal des e-mails transactionnels — permet de vérifier le parcours d'inscription
+/// et les e-mails de statut de commande sans SMTP en développement (CDC §2.2).
+model EmailLog {
+  id       String   @id @default(cuid())
+  to       String
+  subject  String
+  template String
+  body     String   @db.Text
+  error    String?
+  sentAt   DateTime @default(now())
+
+  @@index([sentAt])
+}
