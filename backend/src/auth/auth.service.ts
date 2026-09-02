@@ -90,6 +90,7 @@ export class AuthService {
         passwordHash: await bcrypt.hash(input.password, BCRYPT_ROUNDS),
         nom: input.nom.trim(),
         prenom: input.prenom.trim(),
+        phone: input.phone.trim(),
         pseudo,
         isVeiled: true,
         audioOathPath: stored.path,

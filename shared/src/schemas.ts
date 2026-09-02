@@ -54,6 +54,22 @@ const pseudo = z
  */
 const pseudoFacultatif = pseudo.optional();
 
+/**
+ * Numéro de téléphone.
+ *
+ * Demandé dès l'inscription : l'administratrice valide chaque candidature à la
+ * main et doit pouvoir joindre la candidate — par WhatsApp le plus souvent —
+ * avant de trancher. Le numéro de l'adresse de livraison, lui, n'existe
+ * qu'après l'acceptation : trop tard pour ce besoin.
+ *
+ * Le format reste permissif : on accepte les espaces, points et indicatifs
+ * tels que les femmes les écrivent, la normalisation se fait à l'affichage.
+ */
+const telephone = z
+  .string()
+  .min(1, { message: 'Nous avons besoin de ton numéro pour te joindre' })
+  .regex(/^[0-9+\s().-]{6,20}$/, { message: 'Ce numéro de téléphone ne semble pas valide' });
+
 // ————— Inscription & authentification (CDC §3.1) —————
 
 export const signupSchema = z.object({
@@ -65,6 +81,7 @@ export const signupSchema = z.object({
   nom: z.string().min(1, { message: 'Ton nom, s’il te plaît' }).max(60),
   pseudo: pseudoFacultatif,
   email,
+  phone: telephone,
   password,
   acceptsTerms: z.literal(true, {
     message: 'Merci d’accepter les CGU et la politique de confidentialité pour continuer',

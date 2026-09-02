@@ -118,7 +118,10 @@ export class AccountService {
         postalCode: input.postalCode.trim(),
         city: input.city.trim(),
         country: input.country.trim(),
-        phone: input.phone?.trim() || null,
+        // Le numéro donné à l'inscription est le seul moyen de joindre la sœur :
+        // enregistrer une adresse sans téléphone ne doit pas l'effacer. On ne
+        // l'écrase donc que si un nouveau numéro est effectivement fourni.
+        ...(input.phone?.trim() ? { phone: input.phone.trim() } : {}),
       },
     });
 

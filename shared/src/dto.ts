@@ -185,6 +185,8 @@ export interface PendingApplicationDto {
   prenom: string;
   pseudo: string;
   email: string;
+  /** Renseigné à l'inscription, pour joindre la candidate avant de trancher. */
+  phone: string | null;
   /** URL de l'audio de serment — accessible aux seules administratrices. */
   audioOathUrl: string | null;
   createdAt: string;

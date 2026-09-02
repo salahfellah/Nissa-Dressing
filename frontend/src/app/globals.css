@@ -19,7 +19,7 @@
 
   /* Les polices sont chargées par next/font (voir app/layout.tsx), qui expose
      --font-*-loaded. Le repli couvre le cas où le CDN Google est injoignable. */
-  --font-montserrat: var(--font-montserrat-loaded), ui-sans-serif, system-ui, sans-serif;
+  --font-nunito: var(--font-nunito-loaded), ui-sans-serif, system-ui, sans-serif;
   --font-playfair: var(--font-playfair-loaded), ui-serif, Georgia, serif;
 
   /* 2 px donnaient des rectangles francs, presque architecturaux. Des angles
@@ -37,7 +37,7 @@
     margin: 0;
     background-color: var(--color-beigeClair);
     color: var(--color-noirIntense);
-    font-family: var(--font-montserrat);
+    font-family: var(--font-nunito);
     -webkit-font-smoothing: antialiased;
     /* Un interlignage plus généreux : le texte respire, la lecture ralentit. */
     line-height: 1.65;

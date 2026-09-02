@@ -55,6 +55,17 @@ export default function IdentityStep({
           {...register('email')}
         />
         <Input
+          label="Numéro de téléphone"
+          type="tel"
+          autoComplete="tel"
+          inputMode="tel"
+          placeholder="06 12 34 56 78"
+          hint="Pour que l’administratrice puisse te joindre sur WhatsApp au sujet de ta demande. Il n’est jamais montré aux autres sœurs."
+          required
+          error={errors.phone?.message}
+          {...register('phone')}
+        />
+        <Input
           label="Mot de passe"
           type="password"
           autoComplete="new-password"

@@ -92,6 +92,7 @@ export class AdminService {
       prenom: user.prenom,
       pseudo: user.pseudo,
       email: user.email,
+      phone: user.phone,
       // L'audio n'est jamais servi statiquement : il passe par une route authentifiée.
       audioOathUrl: user.audioOathPath ? `/admin/applications/${user.id}/audio` : null,
       createdAt: user.createdAt.toISOString(),

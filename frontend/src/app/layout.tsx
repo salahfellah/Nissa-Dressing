@@ -11,9 +11,23 @@ import './globals.css';
  *  - le build ne dépend pas d'un accès réseau sortant.
  * Ce sont des polices variables : un seul fichier couvre toutes les graisses.
  */
-const montserrat = localFont({
-  src: [{ path: '../../public/fonts/montserrat-variable.woff2', weight: '100 900', style: 'normal' }],
-  variable: '--font-montserrat-loaded',
+/*
+ * Nunito Sans plutôt que Montserrat pour le texte courant.
+ *
+ * Montserrat est une géométrique : ses lettres sont construites au compas,
+ * ce qui donne une page nette mais impersonnelle. Nunito Sans est humaniste,
+ * avec des terminaisons arrondies qui gardent la trace du geste manuscrit —
+ * c'est ce qui fait qu'une interface paraît accueillante plutôt qu'efficace.
+ * Elle tient aussi mieux les petites tailles, nombreuses ici.
+ *
+ * Sous-ensemble latin : il couvre les accents français et la ligature œ,
+ * indispensable sur un site qui dit « sœurs » à chaque page.
+ */
+const nunito = localFont({
+  src: [
+    { path: '../../public/fonts/nunito-sans-variable.woff2', weight: '200 1000', style: 'normal' },
+  ],
+  variable: '--font-nunito-loaded',
   display: 'swap',
   fallback: ['ui-sans-serif', 'system-ui', 'Segoe UI', 'Helvetica', 'Arial', 'sans-serif'],
 });
@@ -48,7 +62,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${montserrat.variable} ${playfair.variable}`}>
+    <html lang="fr" className={`${nunito.variable} ${playfair.variable}`}>
       <body>
         <Providers>{children}</Providers>
       </body>

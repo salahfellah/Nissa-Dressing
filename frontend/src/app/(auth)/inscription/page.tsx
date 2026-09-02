@@ -48,6 +48,7 @@ export default function SignupPage() {
       // en fabrique un. Envoyer une chaîne vide échouerait sur la longueur.
       if (values.pseudo?.trim()) payload.append('pseudo', values.pseudo.trim());
       payload.append('email', values.email);
+      payload.append('phone', values.phone);
       payload.append('password', values.password);
       payload.append('isVeiled', 'true');
       payload.append('acceptsTerms', 'true');

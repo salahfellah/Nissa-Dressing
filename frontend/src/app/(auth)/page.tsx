@@ -13,15 +13,25 @@ export default function SplashPage() {
           <Logo size="large" asHeading />
 
           <div className="mt-12 text-center">
-            <p className="text-sm leading-relaxed mb-6 italic text-brunProfond">
+            {/*
+              Citation en Playfair droit : la serif garde la chaleur d'un
+              texte écrit, sans l'inclinaison de l'italique, qui durcissait
+              la phrase au lieu de l'adoucir.
+            */}
+            <p className="font-playfair text-lg md:text-xl leading-relaxed mb-7 text-brunProfond">
               « Célébrer la féminité modeste à travers des créations élégantes et intemporelles. »
             </p>
-            <p className="flex justify-center items-center gap-3 text-xs tracking-widest font-semibold text-orDore">
-              <span>ÉLÉGANCE</span>
-              <span aria-hidden>|</span>
-              <span>MODESTIE</span>
-              <span aria-hidden>|</span>
-              <span>FOI</span>
+            {/*
+              Trois mots posés, non gravés : capitales suivies et barres
+              verticales donnaient une plaque de métal. Casse normale et
+              points médians dorés, plus discrets.
+            */}
+            <p className="flex justify-center items-center gap-3 text-sm text-taupe">
+              <span>Élégance</span>
+              <span aria-hidden className="text-orDore/70">·</span>
+              <span>Modestie</span>
+              <span aria-hidden className="text-orDore/70">·</span>
+              <span>Foi</span>
             </p>
           </div>
         </div>

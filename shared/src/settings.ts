@@ -107,3 +107,28 @@ export function formatPrice(cents: number): string {
 
 export const euros = (cents: number): number => cents / 100;
 export const toCents = (euros: number): number => Math.round(euros * 100);
+
+/**
+ * Convertit un numéro tel qu'il a été saisi en numéro utilisable par wa.me,
+ * qui n'accepte que des chiffres, indicatif pays compris et sans « + ».
+ *
+ * Un numéro français est presque toujours écrit au format national
+ * (06 12 34 56 78) : le zéro initial est alors remplacé par l'indicatif, sans
+ * quoi le lien WhatsApp ne mène à personne.
+ */
+export function whatsappNumber(
+  phone: string | null | undefined,
+  indicatifParDefaut = '33',
+): string | null {
+  if (!phone) return null;
+
+  const chiffres = phone.replace(/\D/g, '');
+  if (chiffres.length < 6) return null;
+
+  // Déjà international : l'indicatif est dans le numéro.
+  if (phone.trim().startsWith('+') || phone.trim().startsWith('00')) {
+    return chiffres.replace(/^00/, '');
+  }
+  if (chiffres.startsWith('0')) return indicatifParDefaut + chiffres.slice(1);
+  return chiffres;
+}

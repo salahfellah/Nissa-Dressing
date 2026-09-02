@@ -1,7 +1,7 @@
 'use client';
 
-import type { PendingApplicationDto } from '@nissa/shared';
-import { Check, Inbox, Volume2, X } from 'lucide-react';
+import { whatsappNumber, type PendingApplicationDto } from '@nissa/shared';
+import { Check, Inbox, MessageCircle, Volume2, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, Card, EmptyState, SectionTitle, Spinner, Textarea } from '@/components/ui';
 import { api, ApiError, downloadUrl } from '@/lib/api';
@@ -92,6 +92,27 @@ export default function AdminApplicationsPage() {
                     <p className="text-sm text-taupe">
                       {application.prenom} {application.nom} · {application.email}
                     </p>
+                    {/*
+                      Le numéro sert précisément à joindre la candidate avant de
+                      trancher : il est donc actionnable, pas seulement affiché.
+                    */}
+                    {application.phone && (
+                      <p className="text-sm mt-1">
+                        {whatsappNumber(application.phone) ? (
+                          <a
+                            href={`https://wa.me/${whatsappNumber(application.phone)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-brunProfond hover:text-orDore underline underline-offset-2"
+                          >
+                            <MessageCircle size={14} />
+                            {application.phone}
+                          </a>
+                        ) : (
+                          <span className="text-taupe">{application.phone}</span>
+                        )}
+                      </p>
+                    )}
                     <p className="text-xs text-taupe mt-1">
                       Déposée le{' '}
                       {new Date(application.createdAt).toLocaleDateString('fr-FR', {
