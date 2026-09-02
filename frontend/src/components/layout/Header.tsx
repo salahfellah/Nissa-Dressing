@@ -76,7 +76,7 @@ export default function Header() {
                   className="hover:text-orDore transition-colors flex flex-col items-center gap-1"
                 >
                   <Heart size={20} />
-                  <span className="text-[0.65rem] tracking-wider uppercase">Favoris</span>
+                  <span className="text-[0.7rem]">Favoris</span>
                 </Link>
 
                 <Link
@@ -89,7 +89,7 @@ export default function Header() {
                       {unread > 9 ? '9+' : unread}
                     </span>
                   )}
-                  <span className="text-[0.65rem] tracking-wider uppercase">Messages</span>
+                  <span className="text-[0.7rem]">Messages</span>
                 </Link>
 
                 <Link
@@ -97,7 +97,7 @@ export default function Header() {
                   className="hover:text-orDore transition-colors flex flex-col items-center gap-1"
                 >
                   <User size={20} />
-                  <span className="text-[0.65rem] tracking-wider uppercase">Compte</span>
+                  <span className="text-[0.7rem]">Compte</span>
                 </Link>
 
                 {isAdmin && (
@@ -106,7 +106,7 @@ export default function Header() {
                     className="hover:text-orDore transition-colors flex flex-col items-center gap-1"
                   >
                     <Shield size={20} />
-                    <span className="text-[0.65rem] tracking-wider uppercase">Admin</span>
+                    <span className="text-[0.7rem]">Admin</span>
                   </Link>
                 )}
 
@@ -115,7 +115,7 @@ export default function Header() {
                   className="hover:text-orDore transition-colors flex flex-col items-center gap-1"
                 >
                   <LogOut size={20} />
-                  <span className="text-[0.65rem] tracking-wider uppercase">Quitter</span>
+                  <span className="text-[0.7rem]">Quitter</span>
                 </button>
               </nav>
             )}
@@ -163,7 +163,7 @@ export default function Header() {
             <li>
               <Link
                 href="/catalogue"
-                className="text-[0.7rem] md:text-xs uppercase tracking-widest font-medium text-taupe hover:text-brunProfond transition-colors"
+                className="text-xs md:text-sm font-medium text-taupe hover:text-brunProfond transition-colors"
               >
                 Toutes
               </Link>
@@ -172,7 +172,7 @@ export default function Header() {
               <li key={category.id} onMouseEnter={() => setOpenCategory(category.id)}>
                 <Link
                   href={`/recherche?categoryId=${category.id}`}
-                  className={`text-[0.7rem] md:text-xs uppercase tracking-widest font-medium transition-colors ${
+                  className={`text-xs md:text-sm font-medium transition-colors ${
                     openCategory === category.id ? 'text-brunProfond' : 'text-taupe hover:text-brunProfond'
                   }`}
                 >

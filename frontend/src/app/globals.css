@@ -12,14 +12,20 @@
   --color-sable: #e8e1d6;
   --color-taupe: #b8ada0;
   --color-brunProfond: #4a4136;
-  --color-noirIntense: #111111;
+  /* Un noir pur sur beige tape à l'œil au bout de quelques minutes. Ce brun
+     très sombre garde un contraste largement suffisant (≈ 11:1) mais se lit
+     sans dureté — c'est une lecture longue qu'on veut permettre. */
+  --color-noirIntense: #2f2a22;
 
   /* Les polices sont chargées par next/font (voir app/layout.tsx), qui expose
      --font-*-loaded. Le repli couvre le cas où le CDN Google est injoignable. */
   --font-montserrat: var(--font-montserrat-loaded), ui-sans-serif, system-ui, sans-serif;
   --font-playfair: var(--font-playfair-loaded), ui-serif, Georgia, serif;
 
-  --radius-sm: 0.125rem;
+  /* 2 px donnaient des rectangles francs, presque architecturaux. Des angles
+     nettement adoucis sont ce qui distingue le plus nettement une interface
+     accueillante d'une vitrine de luxe. */
+  --radius-sm: 0.625rem;
 }
 
 @layer base {
@@ -33,6 +39,8 @@
     color: var(--color-noirIntense);
     font-family: var(--font-montserrat);
     -webkit-font-smoothing: antialiased;
+    /* Un interlignage plus généreux : le texte respire, la lecture ralentit. */
+    line-height: 1.65;
   }
 
   /* Anneau de focus visible au clavier, invisible au clic souris. */

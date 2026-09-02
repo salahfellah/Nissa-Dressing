@@ -1,7 +1,15 @@
 'use client';
 
 import type { OrderDto } from '@nissa/shared';
-import { Download, MessageCircle, PackageCheck, ShieldCheck, Truck, Undo2 } from 'lucide-react';
+import {
+  AlarmClock,
+  Download,
+  MessageCircle,
+  PackageCheck,
+  ShieldCheck,
+  Truck,
+  Undo2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Alert, Button, ButtonLink } from '@/components/ui';
@@ -25,6 +33,12 @@ export default function OrderActions({
   const [isBusy, setIsBusy] = useState(false);
 
   const isBuyer = order.viewerRole === 'BUYER';
+
+  // Jours entiers restants avant que la réception ne soit acquise d'office.
+  const joursRestants = order.confirmationDeadline
+    ? Math.max(0, Math.ceil((new Date(order.confirmationDeadline).getTime() - Date.now()) / 86_400_000))
+    : null;
+  const urgent = joursRestants !== null && joursRestants <= 3;
 
   const run = async (path: string, notice: string) => {
     setIsBusy(true);
@@ -80,6 +94,25 @@ export default function OrderActions({
 
       {isBuyer && (order.status === 'SHIPPED' || order.status === 'PAID') && (
         <>
+          {joursRestants !== null && (
+            <p
+              className={`flex items-start gap-2 text-sm rounded-sm p-3 leading-relaxed ${
+                urgent
+                  ? 'bg-orDore/15 text-brunProfond font-medium'
+                  : 'bg-sable/40 text-brunProfond'
+              }`}
+            >
+              <AlarmClock size={16} className="shrink-0 mt-0.5 text-orDore" />
+              <span>
+                {joursRestants === 0
+                  ? 'Dernier jour pour répondre.'
+                  : `Il te reste ${joursRestants} jour${joursRestants > 1 ? 's' : ''} pour répondre.`}{' '}
+                Sans réponse de ta part, la commande sera considérée comme bien reçue et conforme,
+                et tu ne pourras plus signaler de souci.
+              </span>
+            </p>
+          )}
+
           <Button onClick={confirmReception} isLoading={isBusy}>
             <PackageCheck size={16} />
             Confirmer la réception
@@ -87,7 +120,7 @@ export default function OrderActions({
           <p className="flex items-start gap-2 text-xs text-taupe leading-relaxed">
             <ShieldCheck size={14} className="shrink-0 mt-0.5 text-orDore" />
             Ton paiement est gardé en sécurité jusque-là. Prends le temps de vérifier ton article
-            avant de confirmer — c’est ce geste qui libère les fonds.
+            avant de confirmer — c’est ce geste qui permet le reversement à la vendeuse.
           </p>
         </>
       )}

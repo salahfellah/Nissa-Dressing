@@ -5,8 +5,8 @@ import { ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import DataTable, { type Column } from '@/components/DataTable';
-import { Alert, Badge, EmptyState, SectionTitle, Select, Spinner } from '@/components/ui';
-import { api } from '@/lib/api';
+import { Alert, Badge, Button, EmptyState, SectionTitle, Select, Spinner } from '@/components/ui';
+import { ApiError, api } from '@/lib/api';
 
 interface AdminOrderRow {
   id: string;
@@ -20,6 +20,10 @@ interface AdminOrderRow {
   sellerPayoutCents: number;
   hasReturnRequest: boolean;
   returnStatus: string | null;
+  /** Reversement déjà transféré à la vendeuse. */
+  payoutDone: boolean;
+  /** Réception confirmée, reversement en attente de validation. */
+  awaitingPayout: boolean;
   createdAt: string;
 }
 
@@ -38,6 +42,7 @@ export default function AdminOrdersPage() {
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -48,9 +53,35 @@ export default function AdminOrdersPage() {
       .finally(() => setIsLoading(false));
   }, [status]);
 
+  // Une commande reçue mais pas encore reversée est toujours de l'argent détenu
+  // par la plateforme : elle compte dans le séquestre au même titre qu'une
+  // commande en cours de livraison.
   const escrowTotal = orders
-    .filter((order) => order.status === 'PAID' || order.status === 'SHIPPED')
+    .filter(
+      (order) => order.status === 'PAID' || order.status === 'SHIPPED' || order.awaitingPayout,
+    )
     .reduce((sum, order) => sum + order.sellerPayoutCents, 0);
+
+  const reverser = async (order: AdminOrderRow) => {
+    setPayingId(order.id);
+    setError(null);
+    try {
+      await api.post(`/admin/orders/${order.id}/payout`);
+      setOrders((liste) =>
+        liste.map((ligne) =>
+          ligne.id === order.id ? { ...ligne, payoutDone: true, awaitingPayout: false } : ligne,
+        ),
+      );
+    } catch (erreur) {
+      setError(
+        erreur instanceof ApiError
+          ? erreur.message
+          : 'Le reversement n’a pas pu être effectué. Réessaie dans un instant.',
+      );
+    } finally {
+      setPayingId(null);
+    }
+  };
 
   const columns: Column<AdminOrderRow>[] = [
     {
@@ -91,6 +122,27 @@ export default function AdminOrdersPage() {
       header: 'Commission',
       className: 'text-brunProfond whitespace-nowrap',
       cell: (order) => formatPrice(order.commissionCents),
+    },
+    {
+      header: 'Reversement',
+      className: 'whitespace-nowrap',
+      cell: (order) =>
+        order.payoutDone ? (
+          <Badge variant="success">Reversé</Badge>
+        ) : order.awaitingPayout ? (
+          <Button
+            variant="secondary"
+            fullWidth={false}
+            className="text-xs px-3 py-1.5"
+            isLoading={payingId === order.id}
+            disabled={order.hasReturnRequest}
+            onClick={() => reverser(order)}
+          >
+            Reverser {formatPrice(order.sellerPayoutCents)}
+          </Button>
+        ) : (
+          <span className="text-taupe">—</span>
+        ),
     },
     {
       header: 'Date',

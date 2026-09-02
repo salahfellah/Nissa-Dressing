@@ -290,6 +290,10 @@ model Order {
   paidAt     DateTime?
   shippedAt  DateTime?
   receivedAt DateTime?
+  /// Réception acquise faute de réponse de l'acheteuse, plutôt que confirmée
+  /// par elle. Distingue les deux dans l'historique : une réception acquise
+  /// ferme la fenêtre de réclamation sans que l'acheteuse se soit prononcée.
+  autoConfirmedAt DateTime?
   refundedAt DateTime?
   cancelledAt DateTime?
 

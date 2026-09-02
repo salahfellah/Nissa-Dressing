@@ -44,13 +44,24 @@ export class AdminService {
       this.prisma.listing.count({ where: { status: 'PUBLISHED' } }),
       this.prisma.user.count({ where: { role: 'MEMBER', status: 'MEMBER' } }),
       // Fonds encaissés mais non encore reversés : le séquestre en cours.
+      // Depuis que le reversement est validé à la main, une commande reçue
+      // mais non reversée reste de l'argent détenu par la plateforme — l'omettre
+      // ferait disparaître du tableau de bord des sommes bien présentes.
       this.prisma.order.aggregate({
-        where: { status: { in: ['PAID', 'SHIPPED'] } },
+        where: {
+          OR: [
+            { status: { in: ['PAID', 'SHIPPED'] } },
+            { status: 'RECEIVED', stripeTransferId: null },
+          ],
+        },
         _sum: { sellerPayoutCents: true },
         _count: true,
       }),
+      // La commission n'est acquise qu'au moment du reversement : c'est en ne
+      // transférant que la part de la vendeuse qu'elle reste à la plateforme.
+      // Avant ce transfert, la totalité est encore indistincte sur le compte.
       this.prisma.order.aggregate({
-        where: { status: 'RECEIVED' },
+        where: { status: 'RECEIVED', stripeTransferId: { not: null } },
         _sum: { commissionCents: true },
       }),
     ]);
@@ -312,6 +323,10 @@ export class AdminService {
       totalCents: order.totalCents,
       commissionCents: order.commissionCents,
       sellerPayoutCents: order.sellerPayoutCents,
+      // `stripeTransferId` vide sur une commande reçue = en attente du
+      // reversement par l'administratrice.
+      payoutDone: Boolean(order.stripeTransferId),
+      awaitingPayout: order.status === 'RECEIVED' && !order.stripeTransferId,
       hasReturnRequest: Boolean(order.returnRequest),
       returnStatus: order.returnRequest?.status ?? null,
       paidAt: order.paidAt?.toISOString() ?? null,

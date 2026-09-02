@@ -122,7 +122,7 @@ export default function PurchasePanel({ listing }: { listing: ListingDto }) {
       )}
 
       <Card className="mb-4">
-        <h2 className="text-xs uppercase tracking-wider text-taupe mb-3">Récapitulatif</h2>
+        <h2 className="text-xs text-taupe mb-3">Récapitulatif</h2>
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between">
             <dt className="text-brunProfond">Article</dt>

@@ -9,7 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { LoginInput, MeDto, SignupInput } from '@nissa/shared';
 import * as bcrypt from 'bcryptjs';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import type { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
@@ -52,9 +52,18 @@ export class AuthService {
       );
     }
 
+    // « î » s'écrit en Unicode d'un seul point de code ou d'un « i » suivi d'un
+    // accent combinant : sans normalisation, deux pseudos identiques à l'œil
+    // passeraient tous deux la contrainte d'unicité de la base.
+    const pseudoDemande = input.pseudo?.normalize('NFC');
+
     const [existingEmail, existingPseudo] = await Promise.all([
       this.prisma.user.findUnique({ where: { email: input.email }, select: { id: true } }),
-      this.prisma.user.findUnique({ where: { pseudo: input.pseudo }, select: { id: true } }),
+      // Le pseudo est facultatif : il n'y a rien à vérifier quand la sœur n'en
+      // a pas choisi — l'API lui en fabrique un plus bas.
+      pseudoDemande
+        ? this.prisma.user.findUnique({ where: { pseudo: pseudoDemande }, select: { id: true } })
+        : Promise.resolve(null),
     ]);
 
     if (existingEmail) {
@@ -70,6 +79,9 @@ export class AuthService {
       });
     }
 
+    // Choisi ou fabriqué, le pseudo est arrêté avant la création du compte.
+    const pseudo = pseudoDemande ?? (await this.genererPseudo(input.prenom));
+
     const stored = await this.uploads.saveAudio(audio);
 
     const user = await this.prisma.user.create({
@@ -78,7 +90,7 @@ export class AuthService {
         passwordHash: await bcrypt.hash(input.password, BCRYPT_ROUNDS),
         nom: input.nom.trim(),
         prenom: input.prenom.trim(),
-        pseudo: input.pseudo.trim(),
+        pseudo,
         isVeiled: true,
         audioOathPath: stored.path,
         status: 'PENDING_REVIEW',
@@ -101,6 +113,42 @@ export class AuthService {
       message:
         'Ta demande d’inscription a bien été transmise. Un e-mail te sera envoyé sous peu ; en cas d’acceptation, une participation de 5 € te sera demandée.',
     };
+  }
+
+  /**
+   * Fabrique un pseudo disponible à partir du prénom.
+   *
+   * Le pseudo étant facultatif, l'API doit savoir en proposer un. La base est
+   * translittérée en ASCII : un prénom écrit en arabe donnerait sinon une
+   * chaîne vide, d'où le repli « soeur ». Le suffixe n'apparaît qu'en cas de
+   * collision, pour que la première sœur d'un prénom garde le pseudo nu.
+   */
+  private async genererPseudo(prenom: string): Promise<string> {
+    const base =
+      prenom
+        .normalize('NFD')
+        .replace(/\p{M}/gu, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '')
+        .slice(0, 20) || 'soeur';
+
+    for (let essai = 0; essai < 50; essai += 1) {
+      // Le pseudo doit faire au moins trois caractères : un prénom très court
+      // est complété plutôt que refusé.
+      const candidat =
+        essai === 0 ? base.padEnd(3, '1') : `${base}.${randomBytes(2).toString('hex')}`;
+
+      const pris = await this.prisma.user.findUnique({
+        where: { pseudo: candidat },
+        select: { id: true },
+      });
+      if (!pris) return candidat;
+    }
+
+    throw new ConflictException({
+      message: 'Nous n’arrivons pas à te proposer un pseudo. Choisis-en un, s’il te plaît.',
+      fieldErrors: { pseudo: 'Choisis un pseudo, s’il te plaît.' },
+    });
   }
 
   /**

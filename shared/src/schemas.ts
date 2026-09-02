@@ -23,13 +23,36 @@ const email = z
   .email({ message: 'Cette adresse e-mail ne semble pas valide' })
   .transform((v) => v.trim().toLowerCase());
 
+/**
+ * Le pseudo s'affiche sur les annonces : il doit pouvoir s'écrire dans la
+ * langue de la sœur. La règle précédente n'acceptait que l'ASCII, ce qui
+ * refusait « Oum Khadîja » pour son seul accent et « أم خديجة » en entier — sur
+ * un site qui invite pourtant à se présenter par un pseudo ou une kunya.
+ *
+ * `\p{L}` couvre les lettres de toutes les écritures, `\p{M}` les accents et
+ * les harakat qui les accompagnent, `\p{Nd}` les chiffres décimaux.
+ *
+ * Le motif commence et finit par une lettre ou un chiffre. Cette seule
+ * contrainte écarte d'un coup les espaces en bordure — deux pseudos qui ne
+ * diffèrent que par une espace finale sont indistinguables à l'écran mais
+ * distincts pour la contrainte d'unicité — et les pseudos faits de seule
+ * ponctuation, qui ne désignent personne.
+ */
 const pseudo = z
   .string()
   .min(3, { message: 'Ton pseudo doit faire au moins 3 caractères' })
   .max(30, { message: 'Ton pseudo est un peu long (30 caractères maximum)' })
-  .regex(/^[a-zA-Z0-9._-]+$/, {
-    message: 'Ton pseudo accepte les lettres, chiffres, points, tirets et underscores',
+  .regex(/^[\p{L}\p{Nd}][\p{L}\p{M}\p{Nd} ._-]*[\p{L}\p{Nd}]$/u, {
+    message:
+      'Ton pseudo accepte les lettres, les chiffres, l’espace, le point, le tiret et l’underscore, et commence et finit par une lettre ou un chiffre',
   });
+
+/**
+ * À l'inscription, le pseudo est facultatif : une sœur qui n'en a pas en tête
+ * ne doit pas être arrêtée sur le premier écran. Le champ est alors absent de
+ * l'envoi — et non vide — et l'API en fabrique un à partir du prénom.
+ */
+const pseudoFacultatif = pseudo.optional();
 
 // ————— Inscription & authentification (CDC §3.1) —————
 
@@ -40,7 +63,7 @@ export const signupSchema = z.object({
   }),
   prenom: z.string().min(1, { message: 'Ton prénom, s’il te plaît' }).max(60),
   nom: z.string().min(1, { message: 'Ton nom, s’il te plaît' }).max(60),
-  pseudo,
+  pseudo: pseudoFacultatif,
   email,
   password,
   acceptsTerms: z.literal(true, {
@@ -263,5 +286,8 @@ export const settingsSchema = z.object({
     GRAND: z.number().int().min(0).max(100000),
   }),
   supportEmail: z.string().email({ message: 'Cette adresse e-mail ne semble pas valide' }),
+  // Au moins un jour, sans quoi la réception serait acquise avant l'arrivée
+  // du colis ; 90 jours au plus, au-delà le séquestre n'a plus de sens.
+  autoConfirmDays: z.number().int().min(1).max(90),
 });
 export type SettingsInput = z.infer<typeof settingsSchema>;

@@ -182,6 +182,25 @@ export default function AdminSettingsPage() {
         </Card>
 
         <Card className="mb-6">
+          <h2 className="font-playfair text-lg text-brunProfond mb-1">Réception des colis</h2>
+          <p className="text-xs text-taupe mb-4">
+            Passé ce délai à compter de l’expédition, une commande sans réponse de l’acheteuse est
+            considérée comme bien reçue : le reversement devient possible et la fenêtre de
+            réclamation se ferme. Les commandes déjà en litige ne sont jamais concernées.
+          </p>
+
+          <Input
+            label="Délai de confirmation (jours)"
+            type="number"
+            min={1}
+            max={90}
+            required
+            error={errors.autoConfirmDays?.message}
+            {...register('autoConfirmDays', { valueAsNumber: true })}
+          />
+        </Card>
+
+        <Card className="mb-6">
           <h2 className="font-playfair text-lg text-brunProfond mb-4">Support</h2>
           <Input
             label="E-mail recevant les demandes de contact"

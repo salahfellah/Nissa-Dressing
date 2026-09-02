@@ -43,7 +43,7 @@ export default function DataTable<T>({ columns, rows, rowKey, caption }: DataTab
                 <th
                   key={column.header}
                   scope="col"
-                  className="px-4 py-3 text-[0.7rem] uppercase tracking-wider text-brunProfond font-semibold whitespace-nowrap"
+                  className="px-4 py-3 text-xs text-brunProfond font-semibold whitespace-nowrap"
                 >
                   {column.header}
                 </th>
@@ -79,7 +79,7 @@ export default function DataTable<T>({ columns, rows, rowKey, caption }: DataTab
                   }
                 >
                   {!column.hideLabelOnMobile && (
-                    <dt className="text-[0.7rem] uppercase tracking-wider text-taupe shrink-0 pt-0.5">
+                    <dt className="text-xs text-taupe shrink-0 pt-0.5">
                       {column.header}
                     </dt>
                   )}

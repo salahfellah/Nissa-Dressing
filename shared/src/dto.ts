@@ -131,6 +131,10 @@ export interface OrderDto {
   shippedAt: string | null;
   receivedAt: string | null;
   refundedAt: string | null;
+  /** Date limite de confirmation de réception (ISO), nulle avant l'expédition. */
+  confirmationDeadline: string | null;
+  /** Réception acquise faute de réponse, plutôt que confirmée par l'acheteuse. */
+  autoConfirmed: boolean;
   hasReturnRequest: boolean;
   unreadMessages: number;
   createdAt: string;

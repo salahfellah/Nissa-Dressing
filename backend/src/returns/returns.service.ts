@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { PdfService } from '../pdf/pdf.service';
 import { StripeService } from '../stripe/stripe.service';
+import { SettingsService } from '../settings/settings.service';
 import { UploadsService } from '../uploads/uploads.service';
 
 /**
@@ -31,6 +32,7 @@ export class ReturnsService {
     private readonly pdf: PdfService,
     private readonly stripe: StripeService,
     private readonly uploads: UploadsService,
+    private readonly settings: SettingsService,
     config: ConfigService,
   ) {
     this.adminEmail = config.getOrThrow<{ email: string }>('admin').email;
@@ -84,6 +86,20 @@ export class ReturnsService {
     }
     if (!['PAID', 'SHIPPED', 'RECEIVED'].includes(order.status)) {
       throw new ConflictException('Cette commande ne permet pas d’ouvrir une demande de retour.');
+    }
+
+    // La fenêtre de réclamation se ferme avec la réception acquise. Sans cette
+    // limite, la vendeuse resterait exposée à un retour des mois après la
+    // livraison, alors même que son paiement a été reversé.
+    const { autoConfirmDays } = await this.settings.get();
+    const echeance = order.shippedAt
+      ? order.shippedAt.getTime() + autoConfirmDays * 86_400_000
+      : null;
+
+    if (order.autoConfirmedAt || (echeance !== null && Date.now() > echeance)) {
+      throw new ConflictException(
+        `Le délai de ${autoConfirmDays} jours pour signaler un souci est écoulé : cette commande est considérée comme reçue et conforme. Écris-nous depuis le centre d’aide si la situation le justifie.`,
+      );
     }
 
     const request = await this.prisma.returnRequest.create({

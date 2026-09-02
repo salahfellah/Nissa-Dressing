@@ -81,7 +81,7 @@ export default function ListingPage() {
         />
 
         <div>
-          <p className="text-xs uppercase tracking-widest text-taupe mb-2">{listing.categoryLabel}</p>
+          <p className="text-xs text-taupe mb-2">{listing.categoryLabel}</p>
 
           <div className="flex items-start justify-between gap-4 mb-4">
             <h1 className="font-playfair text-2xl md:text-3xl text-noirIntense">{listing.title}</h1>

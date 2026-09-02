@@ -24,6 +24,16 @@ export interface PlatformSettings {
   shippingFeesCents: Record<PackageFormat, number>;
   /** Adresse e-mail recevant les demandes du formulaire de contact. CDC §3.8. */
   supportEmail: string;
+  /**
+   * Délai laissé à l'acheteuse pour confirmer la réception, en jours à compter
+   * de l'expédition.
+   *
+   * Sans limite, une acheteuse qui a bien reçu son colis mais ne clique jamais
+   * bloque l'argent de la vendeuse indéfiniment. Passé ce délai la réception
+   * est acquise, le reversement devient possible et la fenêtre de réclamation
+   * se ferme.
+   */
+  autoConfirmDays: number;
 }
 
 export const DEFAULT_SETTINGS: PlatformSettings = {
@@ -39,6 +49,7 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
     GRAND: 990,
   },
   supportEmail: 'contact@nissa-dressing.fr',
+  autoConfirmDays: 14,
 };
 
 export const SETTINGS_KEY = 'platform';

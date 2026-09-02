@@ -18,7 +18,11 @@ import { PdfService } from '../pdf/pdf.service';
 import { orderReference } from '../common/utils/reference';
 import { iso } from '../common/utils/dates';
 
-import { PENDING_ORDER_CLEANUP_CRON, PENDING_PAYMENT_TTL_MINUTES } from '../config/runtime';
+import {
+  DELIVERY_AUTO_CONFIRM_CRON,
+  PENDING_ORDER_CLEANUP_CRON,
+  PENDING_PAYMENT_TTL_MINUTES,
+} from '../config/runtime';
 
 type OrderWithRelations = Order & {
   listing: { id: string; title: string; photos: string[]; priceCents: number; packageFormat: string; size: string };
@@ -50,7 +54,17 @@ export class OrdersService {
     returnRequest: { select: { id: true } },
   } satisfies Prisma.OrderInclude;
 
+  /**
+   * Date limite de confirmation : l'expédition plus le délai de plateforme.
+   * Nulle tant que le colis n'est pas parti — le compte à rebours ne peut pas
+   * démarrer avant l'envoi.
+   */
+  private confirmationDeadline(shippedAt: Date | null, autoConfirmDays: number): Date | null {
+    return shippedAt ? new Date(shippedAt.getTime() + autoConfirmDays * 86_400_000) : null;
+  }
+
   private async toDto(order: OrderWithRelations, viewerId: string): Promise<OrderDto> {
+    const settings = await this.settings.get();
     const unreadMessages = await this.prisma.message.count({
       where: { orderId: order.id, senderId: { not: viewerId }, readAt: null },
     });
@@ -79,7 +93,7 @@ export class OrdersService {
         commissionCents: order.commissionCents,
         totalCents: order.totalCents,
         sellerPayoutCents: order.sellerPayoutCents,
-        commissionPayer: (await this.settings.get()).commissionPayer,
+        commissionPayer: settings.commissionPayer,
       },
       shippingAddress: {
         recipientName: order.shipRecipientName,
@@ -94,6 +108,10 @@ export class OrdersService {
       shippedAt: iso(order.shippedAt),
       receivedAt: iso(order.receivedAt),
       refundedAt: iso(order.refundedAt),
+      confirmationDeadline: iso(
+        this.confirmationDeadline(order.shippedAt, settings.autoConfirmDays),
+      ),
+      autoConfirmed: Boolean(order.autoConfirmedAt),
       hasReturnRequest: Boolean(order.returnRequest),
       unreadMessages,
       createdAt: order.createdAt.toISOString(),
@@ -297,32 +315,15 @@ export class OrdersService {
       throw new ConflictException('Cette commande ne peut plus être confirmée.');
     }
 
-    let transferId: string | null = null;
-    if (order.seller.stripeAccountId) {
-      try {
-        transferId = await this.stripe.releaseEscrow({
-          destinationAccountId: order.seller.stripeAccountId,
-          amountCents: order.sellerPayoutCents,
-          orderId: order.id,
-          reference: order.reference,
-          chargeId: order.stripeChargeId,
-        });
-      } catch (error) {
-        // La confirmation de réception ne doit pas échouer parce que Stripe est
-        // momentanément indisponible : la commande passe à RECEIVED et le
-        // transfert est repris par l'administratrice depuis le back-office.
-        this.logger.error(
-          `Libération du séquestre impossible pour ${order.reference} : ${(error as Error).message}`,
-        );
-      }
-    }
-
+    // La confirmation de réception ne libère plus les fonds d'elle-même.
+    // L'argent reste sur le compte de la plateforme jusqu'à ce que
+    // l'administratrice valide le reversement depuis le back-office : c'est
+    // elle qui arbitre, notamment si un litige est ouvert entre-temps.
     const updated = (await this.prisma.order.update({
       where: { id: orderId },
       data: {
         status: 'RECEIVED',
         receivedAt: new Date(),
-        ...(transferId ? { stripeTransferId: transferId } : {}),
       },
       include: this.include,
     })) as OrderWithRelations;
@@ -334,6 +335,89 @@ export class OrdersService {
     });
 
     return this.toDto(updated, buyerId);
+  }
+
+  /**
+   * Reversement à la vendeuse, déclenché par l'administratrice (back-office).
+   *
+   * Les fonds sont restés sur le compte de la plateforme depuis l'encaissement.
+   * Ce transfert est le seul moment où ils en sortent, et la commission n'est
+   * jamais transférée : elle reste acquise en ne bougeant pas.
+   */
+  async releasePayout(orderId: string): Promise<OrderDto> {
+    const order = (await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { ...this.include, seller: true, returnRequest: { select: { status: true } } },
+    })) as
+      | (OrderWithRelations & {
+          seller: { stripeAccountId: string | null };
+          returnRequest: { status: string } | null;
+        })
+      | null;
+
+    if (!order) throw new NotFoundException('Nous ne retrouvons pas cette commande.');
+
+    if (order.status !== 'RECEIVED') {
+      throw new ConflictException(
+        'Le reversement n’est possible qu’une fois la réception confirmée par l’acheteuse.',
+      );
+    }
+
+    // Idempotence : un double clic ne doit pas payer deux fois.
+    if (order.stripeTransferId) {
+      throw new ConflictException('Cette commande a déjà été reversée.');
+    }
+
+    // Un litige ouvert gèle l'argent : on ne paie pas la vendeuse tant que le
+    // retour n'a pas été tranché en sa faveur.
+    if (order.returnRequest && order.returnRequest.status !== 'REJECTED') {
+      throw new ConflictException(
+        'Un retour est en cours sur cette commande : tranche-le avant de reverser.',
+      );
+    }
+
+    if (!order.seller.stripeAccountId) {
+      throw new ConflictException(
+        'La vendeuse n’a pas terminé son inscription Stripe : le reversement est impossible.',
+      );
+    }
+
+    // Un refus de Stripe doit être lisible par l'administratrice : c'est elle
+    // qui décide quoi faire ensuite (relancer la vendeuse pour qu'elle termine
+    // son inscription, réessayer plus tard). Une erreur générique la laisserait
+    // sans piste. La commande reste en attente : rien n'est marqué comme reversé.
+    let transferId: string;
+    try {
+      transferId = await this.stripe.releaseEscrow({
+        destinationAccountId: order.seller.stripeAccountId,
+        amountCents: order.sellerPayoutCents,
+        orderId: order.id,
+        reference: order.reference,
+        chargeId: order.stripeChargeId,
+      });
+    } catch (error) {
+      const detail = (error as Error).message;
+      this.logger.error(`Reversement refusé pour ${order.reference} : ${detail}`);
+      throw new ConflictException(
+        `Stripe a refusé le reversement : ${detail}. La commande reste en attente, tu peux réessayer.`,
+      );
+    }
+
+    const updated = (await this.prisma.order.update({
+      where: { id: orderId },
+      data: { stripeTransferId: transferId },
+      include: this.include,
+    })) as OrderWithRelations;
+
+    this.logger.log(`Reversement ${transferId} pour la commande ${updated.reference}.`);
+
+    await this.mail.send('payoutReleased', updated.seller.email, {
+      prenom: updated.seller.prenom,
+      reference: updated.reference,
+      payoutCents: updated.sellerPayoutCents,
+    });
+
+    return this.toDto(updated, updated.sellerId);
   }
 
   // ————— Consultation —————
@@ -417,6 +501,57 @@ export class OrdersService {
    * Libère les annonces réservées par une commande jamais payée : sans cela, un
    * abandon de panier retirerait définitivement l'article du catalogue.
    */
+  /**
+   * Acquiert la réception des commandes livrées restées sans réponse.
+   *
+   * Sans ce garde-fou, une acheteuse qui a bien reçu son colis mais ne clique
+   * jamais immobilise l'argent de la vendeuse indéfiniment : l'administratrice
+   * n'a alors aucun moment légitime pour reverser. Passé le délai, la réception
+   * est acquise et la fenêtre de réclamation se ferme.
+   *
+   * Les commandes déjà en litige sont écartées : un retour ouvert se tranche à
+   * la main, il ne doit pas expirer sous l'effet d'une horloge.
+   */
+  @Cron(DELIVERY_AUTO_CONFIRM_CRON, { name: 'reception-acquise' })
+  async autoConfirmDeliveredOrders(): Promise<void> {
+    try {
+      const { autoConfirmDays } = await this.settings.get();
+      const cutoff = new Date(Date.now() - autoConfirmDays * 86_400_000);
+
+      const orders = (await this.prisma.order.findMany({
+        where: { status: 'SHIPPED', shippedAt: { lt: cutoff }, returnRequest: { is: null } },
+        include: this.include,
+      })) as OrderWithRelations[];
+
+      for (const order of orders) {
+        const now = new Date();
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: { status: 'RECEIVED', receivedAt: now, autoConfirmedAt: now },
+        });
+
+        await this.mail.send('receptionAutoConfirmed', order.buyer.email, {
+          prenom: order.buyer.prenom,
+          reference: order.reference,
+          jours: autoConfirmDays,
+        });
+        await this.mail.send('orderReceivedSeller', order.seller.email, {
+          prenom: order.seller.prenom,
+          reference: order.reference,
+          payoutCents: order.sellerPayoutCents,
+        });
+
+        this.logger.log(
+          `Réception acquise pour ${order.reference} : sans réponse ${autoConfirmDays} jours après l'expédition.`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Vérification des réceptions non confirmées impossible : ${(error as Error).message}`,
+      );
+    }
+  }
+
   @Cron(PENDING_ORDER_CLEANUP_CRON, { name: 'liberation-commandes-impayees' })
   async releaseStalePendingOrders(): Promise<void> {
     const cutoff = new Date(Date.now() - PENDING_PAYMENT_TTL_MINUTES * 60_000);

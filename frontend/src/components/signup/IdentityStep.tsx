@@ -41,9 +41,8 @@ export default function IdentityStep({
         </div>
 
         <Input
-          label="Pseudo"
-          hint="C’est ce nom que les autres sœurs verront sur tes annonces."
-          required
+          label="Pseudo (facultatif)"
+          hint="C’est ce nom que les autres sœurs verront sur tes annonces. Laisse vide si tu préfères : nous t’en proposerons un à partir de ton prénom."
           error={errors.pseudo?.message}
           {...register('pseudo')}
         />

@@ -15,7 +15,7 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const base =
-  'py-3 px-6 uppercase tracking-widest text-sm font-medium transition-all duration-200 inline-flex justify-center items-center gap-2 rounded-sm active:scale-[0.98]';
+  'py-3 px-6 text-sm font-semibold transition-all duration-200 inline-flex justify-center items-center gap-2 rounded-sm active:scale-[0.98]';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;

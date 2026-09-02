@@ -18,14 +18,14 @@ export default function ListingAttributes({ listing }: { listing: ListingDto }) 
       <dl className="grid grid-cols-2 gap-x-6 gap-y-3 mb-6 pb-6 border-b border-sable">
         {rows.map(([label, value]) => (
           <div key={label}>
-            <dt className="text-[0.7rem] uppercase tracking-wider text-taupe">{label}</dt>
+            <dt className="text-xs text-taupe">{label}</dt>
             <dd className="text-sm text-brunProfond font-medium mt-0.5">{value}</dd>
           </div>
         ))}
       </dl>
 
       <div className="mb-6">
-        <h2 className="text-xs uppercase tracking-wider text-taupe mb-2">Description</h2>
+        <h2 className="text-xs text-taupe mb-2">Description</h2>
         <p className="text-sm text-brunProfond leading-relaxed whitespace-pre-wrap">
           {listing.description}
         </p>

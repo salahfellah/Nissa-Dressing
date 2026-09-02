@@ -5,6 +5,7 @@ import { createReadStream } from 'node:fs';
 import { CurrentUser, type AuthUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { zodBody } from '../common/pipes/zod-validation.pipe';
+import { OrdersService } from '../orders/orders.service';
 import { ReturnsService } from '../returns/returns.service';
 import { AdminService } from './admin.service';
 
@@ -15,6 +16,7 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly returns: ReturnsService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   @Get('stats')
@@ -88,6 +90,18 @@ export class AdminController {
   }
 
   // ————— Litiges / retours (CDC §3.7) —————
+
+  /**
+   * Reverse à la vendeuse les fonds gardés en séquestre.
+   *
+   * C'est l'administratrice qui décide : la confirmation de réception par
+   * l'acheteuse ne déclenche plus le transfert.
+   */
+  @HttpCode(200)
+  @Post('orders/:id/payout')
+  releasePayout(@Param('id') id: string) {
+    return this.ordersService.releasePayout(id);
+  }
 
   @Get('returns')
   returnsList(@Query('status') status?: string) {

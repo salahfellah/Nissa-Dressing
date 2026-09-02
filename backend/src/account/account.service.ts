@@ -84,8 +84,13 @@ export class AccountService {
   // ————— Profil & adresse (CDC §3.2) —————
 
   async updateProfile(userId: string, input: ProfileInput): Promise<MeDto> {
+    // Même normalisation qu'à l'inscription : deux écritures Unicode d'un même
+    // accent donnent deux pseudos identiques à l'œil que la contrainte
+    // d'unicité laisserait pourtant coexister.
+    const pseudo = input.pseudo.normalize('NFC');
+
     const taken = await this.prisma.user.findFirst({
-      where: { pseudo: input.pseudo, NOT: { id: userId } },
+      where: { pseudo, NOT: { id: userId } },
       select: { id: true },
     });
     if (taken) {
@@ -97,7 +102,7 @@ export class AccountService {
 
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: { nom: input.nom.trim(), prenom: input.prenom.trim(), pseudo: input.pseudo.trim() },
+      data: { nom: input.nom.trim(), prenom: input.prenom.trim(), pseudo },
     });
 
     return this.auth.toMeDto(user);

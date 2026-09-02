@@ -194,11 +194,41 @@ export const templates = {
       { label: 'Confirmer la réception', url: p.orderUrl },
     ),
 
+  /**
+   * Réception confirmée par l'acheteuse. Le reversement n'est pas encore parti :
+   * c'est l'administratrice qui le déclenche après vérification. Ce message ne
+   * doit donc rien annoncer qui ne soit pas déjà fait.
+   */
   orderReceivedSeller: (p: { prenom: string; reference: string; payoutCents: number }) =>
+    mail(
+      `Réception confirmée — commande ${p.reference}`,
+      'Ton acheteuse a bien reçu son colis',
+      `<p>Bonne nouvelle ${p.prenom} : l’acheteuse a confirmé la réception de son colis et sa conformité.</p>
+       <p>Ton reversement de <strong>${formatPrice(
+         p.payoutCents,
+       )}</strong> est en cours de validation par l’administratrice. Tu recevras un e-mail dès qu’il sera parti.</p>
+       <p>Merci pour ta vente et à bientôt sur Nissa Dressing.</p>`,
+    ),
+
+  /**
+   * Réception acquise faute de réponse. Le message doit être franc : la
+   * fenêtre de réclamation se ferme, et l'acheteuse doit comprendre pourquoi.
+   */
+  receptionAutoConfirmed: (p: { prenom: string; reference: string; jours: number }) =>
+    mail(
+      `Réception acquise — commande ${p.reference}`,
+      'Ta commande est considérée comme reçue',
+      `<p>${p.prenom}, ta commande ${p.reference} a été expédiée il y a plus de ${p.jours} jours et nous n’avons pas eu de retour de ta part.</p>
+       <p>Elle est donc considérée comme bien reçue et conforme : le paiement va être reversé à la vendeuse et il n’est plus possible d’ouvrir une demande de retour.</p>
+       <p>Si quelque chose ne va pas malgré tout, écris-nous depuis le centre d’aide : nous regarderons ta situation.</p>`,
+    ),
+
+  /** Reversement effectivement transféré, après validation par l'administratrice. */
+  payoutReleased: (p: { prenom: string; reference: string; payoutCents: number }) =>
     mail(
       `Paiement libéré — commande ${p.reference}`,
       'Ton paiement a été libéré',
-      `<p>Bonne nouvelle ${p.prenom} : l’acheteuse a confirmé la réception de son colis.</p>
+      `<p>${p.prenom}, ton reversement pour la commande ${p.reference} vient d’être validé.</p>
        <p>Le montant de <strong>${formatPrice(
          p.payoutCents,
        )}</strong> a été transféré vers ton compte Stripe. Le virement vers ton compte bancaire suit le calendrier habituel de Stripe.</p>

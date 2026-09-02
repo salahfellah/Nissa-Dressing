@@ -100,7 +100,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'enfant-fille',
-    label: 'Enfant — Fille',
+    label: 'Enfant fille',
     shortLabel: 'Fille',
     sizeGroup: 'enfant',
     subcategories: [
@@ -125,7 +125,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'enfant-garcon',
-    label: 'Enfant — Garçon',
+    label: 'Enfant garçon',
     shortLabel: 'Garçon',
     sizeGroup: 'enfant',
     subcategories: [
@@ -140,7 +140,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'bebe-fille',
-    label: 'Bébé — Fille',
+    label: 'Bébé fille',
     shortLabel: 'Bébé fille',
     sizeGroup: 'bebe',
     subcategories: [
@@ -164,7 +164,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     id: 'bebe-garcon',
-    label: 'Bébé — Garçon',
+    label: 'Bébé garçon',
     shortLabel: 'Bébé garçon',
     sizeGroup: 'bebe',
     subcategories: [

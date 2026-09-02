@@ -58,5 +58,15 @@ export const CONTACT_THROTTLE = {
 export const PENDING_ORDER_CLEANUP_CRON =
   process.env.PENDING_ORDER_CLEANUP_CRON?.trim() || '0 */10 * * * *';
 
+/**
+ * Rythme de vérification des réceptions non confirmées.
+ *
+ * Le délai lui-même est un réglage de plateforme (en jours, modifiable au
+ * back-office) : ce cron ne fait que passer voir, une fois par heure, si des
+ * commandes l'ont dépassé.
+ */
+export const DELIVERY_AUTO_CONFIRM_CRON =
+  process.env.DELIVERY_AUTO_CONFIRM_CRON?.trim() || '0 15 * * * *';
+
 /** Délai au-delà duquel une commande impayée libère son article, en minutes. */
 export const PENDING_PAYMENT_TTL_MINUTES = int(process.env.PENDING_PAYMENT_TTL_MINUTES, 30);

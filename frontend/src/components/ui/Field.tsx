@@ -32,7 +32,7 @@ function FieldShell({ id, label, required, error, hint, children }: FieldShellPr
       {label && (
         <label
           htmlFor={id}
-          className="block text-xs font-semibold uppercase tracking-wider mb-2 text-brunProfond"
+          className="block text-sm font-medium mb-2 text-brunProfond"
         >
           {label} {required && <span className="text-orDore">*</span>}
         </label>
@@ -83,11 +83,28 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, required, className = '', id, ...rest },
+  { label, error, hint, required, className = '', id, onWheel, ...rest },
   ref,
 ) {
   const generated = useId();
   const fieldId = id ?? generated;
+
+  /**
+   * Un `input[type=number]` qui a le focus voit sa valeur changer quand la
+   * molette passe dessus : la page défile, le montant bouge, et rien de ce que
+   * la vendeuse a fait ne ressemblait à une saisie. Une annonce déposée à 45 €
+   * s'est ainsi retrouvée publiée à 44,61 € — trente-neuf crans de 0,01 €.
+   *
+   * Le champ perd le focus au premier cran : la page continue de défiler
+   * normalement et la valeur ne bouge plus. Le garde-fou vit ici plutôt que
+   * sur chaque appel, car il protège aussi la commission, le prix du boost et
+   * les frais de port du back-office, où une valeur changée à l'insu de
+   * l'administratrice se répercute sur toutes les commandes.
+   */
+  const figerAuDefilement = (event: React.WheelEvent<HTMLInputElement>) => {
+    if (event.currentTarget.type === 'number') event.currentTarget.blur();
+    onWheel?.(event);
+  };
 
   return (
     <FieldShell id={fieldId} label={label} required={required} error={error} hint={hint}>
@@ -95,6 +112,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         ref={ref}
         required={required}
         className={`${control(!!error)} ${className}`}
+        onWheel={figerAuDefilement}
         {...aria(fieldId, error, hint)}
         {...rest}
       />

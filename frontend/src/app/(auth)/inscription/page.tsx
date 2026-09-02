@@ -44,7 +44,9 @@ export default function SignupPage() {
       const payload = new FormData();
       payload.append('prenom', values.prenom);
       payload.append('nom', values.nom);
-      payload.append('pseudo', values.pseudo);
+      // Le pseudo est facultatif : laissé vide, il n'est pas transmis, et l'API
+      // en fabrique un. Envoyer une chaîne vide échouerait sur la longueur.
+      if (values.pseudo?.trim()) payload.append('pseudo', values.pseudo.trim());
       payload.append('email', values.email);
       payload.append('password', values.password);
       payload.append('isVeiled', 'true');
