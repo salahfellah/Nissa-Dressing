@@ -20,7 +20,7 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
       }
 
       throw new BadRequestException({
-        message: 'Quelques champs demandent ton attention.',
+        message: 'Quelques champs demandent votre attention.',
         fieldErrors,
       });
     }

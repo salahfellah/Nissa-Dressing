@@ -19,7 +19,7 @@ export const SIZE_REFERENTIALS: Record<SizeGroup, SizeReferential> = {
   femme: {
     group: 'femme',
     label: 'Taille femme',
-    help: 'Indique la taille figurant sur l’étiquette. En cas de doute, précise les mensurations dans la description.',
+    help: 'Indiquez la taille figurant sur l’étiquette. En cas de doute, précisez les mensurations dans la description.',
     values: [
       'XS (34)',
       'S (36)',

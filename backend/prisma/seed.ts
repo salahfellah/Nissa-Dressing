@@ -24,7 +24,7 @@ const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) })
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin@nissa-dressing.fr';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'Admin1234';
-const ADMIN_PSEUDO = process.env.ADMIN_PSEUDO ?? 'administratrice';
+const ADMIN_PSEUDO = process.env.ADMIN_PSEUDO ?? 'Nissa Admin';
 const DEMO_PASSWORD = 'Soeur1234';
 
 const daysFromNow = (days: number): Date => new Date(Date.now() + days * 86_400_000);
@@ -89,6 +89,22 @@ async function main(): Promise<void> {
   // ————— Membres de démonstration —————
   const demoHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 
+  /**
+   * Un pseudo de démonstration peut avoir été repris par un vrai compte au fil
+   * des essais. L'upsert porte sur l'e-mail : il partirait alors créer un
+   * compte dont le pseudo est déjà pris, et tout le seed s'arrêterait sur une
+   * violation d'unicité. On laisse plutôt ce membre de côté, en le disant.
+   */
+  const pseudoDisponible = async (email: string, pseudo: string): Promise<boolean> => {
+    const occupant = await prisma.user.findUnique({
+      where: { pseudo },
+      select: { email: true },
+    });
+    if (!occupant || occupant.email === email) return true;
+    console.log(`• ${email} ignoré : le pseudo « ${pseudo} » appartient à ${occupant.email}`);
+    return false;
+  };
+
   const sellers = await Promise.all(
     [
       {
@@ -118,8 +134,10 @@ async function main(): Promise<void> {
         postalCode: '13006',
         line1: '30 boulevard du Levant',
       },
-    ].map((seller) =>
-      prisma.user.upsert({
+    ].map(async (seller) => {
+      if (!(await pseudoDisponible(seller.email, seller.pseudo))) return null;
+
+      return prisma.user.upsert({
         where: { email: seller.email },
         create: {
           email: seller.email,
@@ -136,14 +154,28 @@ async function main(): Promise<void> {
           postalCode: seller.postalCode,
           city: seller.city,
           country: 'France',
-          stripeAccountId: `acct_seed_${seller.pseudo}`,
-          stripeConnectStatus: 'COMPLETE',
+          // Aucun compte Stripe inventé : un identifiant fabriqué se fait
+          // passer pour une inscription terminée, puis fait échouer aussi bien
+          // le reversement que l'onboarding — la vendeuse ne peut même plus
+          // créer le vrai compte, puisque le code croit qu'elle en a un.
+          stripeAccountId: null,
+          stripeConnectStatus: 'NOT_STARTED',
         },
         update: {},
-      }),
-    ),
+      });
+    }),
   );
-  console.log(`✓ ${sellers.length} membres de démonstration (mot de passe : ${DEMO_PASSWORD})`);
+  // Les vendeuses effectivement disponibles pour porter les annonces de la
+  // vitrine — celles dont le pseudo était pris ont été écartées plus haut.
+  const vendeuses = sellers.filter((seller) => seller !== null);
+  if (vendeuses.length === 0) {
+    throw new Error(
+      'Aucune vendeuse de démonstration n’a pu être créée : leurs pseudos sont tous pris par de vrais comptes.',
+    );
+  }
+  console.log(
+    `✓ ${vendeuses.length} membres de démonstration (mot de passe : ${DEMO_PASSWORD})`,
+  );
 
   // ————— Une candidature en attente, pour tester la file de validation —————
   // La candidature est remise en attente si une démonstration ou un test l'a
@@ -317,7 +349,7 @@ async function main(): Promise<void> {
   let created = 0;
   let illustrated = 0;
   for (const [index, listing] of listings.entries()) {
-    const seller = sellers[index % sellers.length];
+    const seller = vendeuses[index % vendeuses.length];
 
     // On ne cherche que parmi les annonces encore *en ligne* : si la pièce de
     // démonstration a été vendue ou retirée entre-temps (tests de bout en bout,
@@ -382,7 +414,7 @@ async function main(): Promise<void> {
   if (!pendingExists) {
     await prisma.listing.create({
       data: {
-        sellerId: sellers[0].id,
+        sellerId: vendeuses[0].id,
         title: TITRE_PAPILLON,
         categoryId: 'femme',
         subcategoryId: 'femme-abaya',

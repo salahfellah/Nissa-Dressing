@@ -1,7 +1,7 @@
 'use client';
 
-import { forwardRef, useId, type ReactNode } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { forwardRef, useId, useState, type ReactNode } from 'react';
+import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 /**
  * Champs de formulaire.
@@ -83,11 +83,28 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, required, className = '', id, onWheel, ...rest },
+  { label, error, hint, required, className = '', id, onWheel, type, ...rest },
   ref,
 ) {
   const generated = useId();
   const fieldId = id ?? generated;
+
+  /**
+   * Œil de relecture des mots de passe.
+   *
+   * Il vit ici et non sur chaque écran : tout champ `type="password"` en
+   * hérite, de la connexion au changement de mot de passe, sans qu'on puisse
+   * l'oublier sur l'un d'eux. Une saisie masquée que l'on ne peut pas relire
+   * fait échouer la sœur sur sa propre frappe — au clavier tactile surtout, et
+   * d'autant plus depuis qu'il faut la reproduire à l'identique dans un champ
+   * de confirmation.
+   *
+   * Le champ redevient masqué à chaque montage : la visibilité ne se retient
+   * pas d'un écran à l'autre.
+   */
+  const [motDePasseVisible, setMotDePasseVisible] = useState(false);
+  const estMotDePasse = type === 'password';
+  const typeEffectif = estMotDePasse && motDePasseVisible ? 'text' : type;
 
   /**
    * Un `input[type=number]` qui a le focus voit sa valeur changer quand la
@@ -106,16 +123,41 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     onWheel?.(event);
   };
 
+  const champ = (
+    <input
+      ref={ref}
+      type={typeEffectif}
+      required={required}
+      // La place du bouton est réservée dans le champ, sinon le texte passe dessous.
+      className={`${control(!!error)} ${estMotDePasse ? 'pr-11' : ''} ${className}`}
+      onWheel={figerAuDefilement}
+      {...aria(fieldId, error, hint)}
+      {...rest}
+    />
+  );
+
   return (
     <FieldShell id={fieldId} label={label} required={required} error={error} hint={hint}>
-      <input
-        ref={ref}
-        required={required}
-        className={`${control(!!error)} ${className}`}
-        onWheel={figerAuDefilement}
-        {...aria(fieldId, error, hint)}
-        {...rest}
-      />
+      {estMotDePasse ? (
+        <div className="relative">
+          {champ}
+          <button
+            type="button"
+            onClick={() => setMotDePasseVisible((visible) => !visible)}
+            // `aria-controls` relie le bouton au champ qu'il dévoile, et
+            // `aria-pressed` annonce l'état courant plutôt qu'une simple action.
+            aria-controls={fieldId}
+            aria-pressed={motDePasseVisible}
+            aria-label={motDePasseVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            title={motDePasseVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-taupe hover:text-orDore transition-colors"
+          >
+            {motDePasseVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+      ) : (
+        champ
+      )}
     </FieldShell>
   );
 });

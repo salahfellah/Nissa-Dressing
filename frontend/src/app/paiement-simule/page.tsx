@@ -14,17 +14,17 @@ const INTENT_LABELS: Record<string, { title: string; description: string }> = {
     description: 'Accès illimité à Nissa Dressing, boost d’annonce offert inclus.',
   },
   commande: {
-    title: 'Paiement de ta commande',
+    title: 'Paiement de votre commande',
     description:
       'Le montant est conservé en séquestre et ne sera reversé à la vendeuse qu’à la confirmation de réception.',
   },
   boost: {
     title: 'Mise en avant mensuelle',
-    description: 'Ton annonce apparaît en tête des résultats pendant 30 jours.',
+    description: 'Votre annonce apparaît en tête des résultats pendant 30 jours.',
   },
   connect: {
     title: 'Coordonnées bancaires',
-    description: 'Simulation de l’onboarding Stripe Connect pour recevoir tes paiements.',
+    description: 'Simulation de l’onboarding Stripe Connect pour recevoir vos paiements.',
   },
 };
 
@@ -72,7 +72,7 @@ function SimulatedPaymentContent() {
   if (!meta) {
     return (
       <Alert variant="error" title="Paiement inconnu">
-        Ce lien de paiement n’est pas valide. Reprends depuis la page précédente.
+        Ce lien de paiement n’est pas valide. Reprenez depuis la page précédente.
       </Alert>
     );
   }
@@ -81,7 +81,7 @@ function SimulatedPaymentContent() {
     <>
       <Alert variant="warning" title="Environnement de démonstration">
         Aucune clé Stripe n’est configurée sur ce serveur : ce paiement est simulé et aucun montant
-        réel n’est débité. Renseigne <code>STRIPE_SECRET_KEY</code> dans{' '}
+        réel n’est débité. Renseignez <code>STRIPE_SECRET_KEY</code> dans{' '}
         <code>apps/api/.env</code> pour activer les paiements réels.
       </Alert>
 

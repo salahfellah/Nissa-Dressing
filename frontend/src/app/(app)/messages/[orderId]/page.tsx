@@ -113,7 +113,7 @@ function ThreadContent() {
       <div className="flex-1 space-y-3 mb-4 overflow-y-auto">
         {messages.length === 0 ? (
           <p className="text-sm text-taupe text-center py-12">
-            Aucun message pour l’instant. Écris le premier — reste courtoise et bienveillante, cette
+            Aucun message pour l’instant. Écrivez le premier — restez courtoise et bienveillante, cette
             conversation peut être consultée par l’administratrice en cas de litige.
           </p>
         ) : (
@@ -170,7 +170,7 @@ function ThreadContent() {
           }}
           rows={2}
           maxLength={2000}
-          placeholder="Écris ton message…"
+          placeholder="Écrivez votre message…"
           aria-label="Message"
           className="flex-1 p-3 bg-white border border-sable rounded-sm text-sm resize-none focus:outline-none focus:border-orDore"
         />

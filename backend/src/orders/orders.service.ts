@@ -15,6 +15,7 @@ import { StripeService } from '../stripe/stripe.service';
 import { MailService } from '../mail/mail.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { PdfService } from '../pdf/pdf.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { orderReference } from '../common/utils/reference';
 import { iso } from '../common/utils/dates';
 
@@ -43,6 +44,7 @@ export class OrdersService {
     private readonly mail: MailService,
     private readonly uploads: UploadsService,
     private readonly pdf: PdfService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private readonly include = {
@@ -146,7 +148,31 @@ export class OrdersService {
       throw new ConflictException('Cet article vient de trouver preneuse.');
     }
     if (listing.sellerId === buyerId) {
-      throw new BadRequestException('Tu ne peux pas acheter ton propre article.');
+      throw new BadRequestException('Vous ne pouvez pas acheter votre propre article.');
+    }
+    if (!this.stripe.bypassConnect) {
+      if (listing.seller.stripeConnectStatus !== 'COMPLETE' || !listing.seller.stripeAccountId) {
+      throw new ConflictException(
+        'La vendeuse n’a pas encore finalisé son compte de paiement. Cet article n’est pas commandable pour le moment.',
+      );
+    }
+      const sellerStripeReady = await this.stripe
+      .isAccountReady(listing.seller.stripeAccountId)
+      .catch((error) => {
+        this.logger.warn(
+          `Compte Stripe vendeuse illisible avant commande (${listing.sellerId}) : ${(error as Error).message}`,
+        );
+        return false;
+      });
+      if (!sellerStripeReady) {
+      await this.prisma.user.update({
+        where: { id: listing.sellerId },
+        data: { stripeConnectStatus: 'PENDING' },
+      });
+      throw new ConflictException(
+        'La vendeuse doit terminer sa configuration Stripe avant que cet article puisse être acheté.',
+      );
+      }
     }
     if (!listing.seller.addressLine1 || !listing.seller.postalCode || !listing.seller.city) {
       throw new ConflictException(
@@ -193,7 +219,7 @@ export class OrdersService {
     } catch (error) {
       if ((error as Prisma.PrismaClientKnownRequestError).code === 'P2002') {
         throw new ConflictException(
-          'Une autre sœur est en train de finaliser cet achat. Réessaie dans quelques minutes.',
+          'Une autre sœur est en train de finaliser cet achat. Réessayez dans quelques minutes.',
         );
       }
       throw error;
@@ -267,6 +293,21 @@ export class OrdersService {
       payoutCents: order.sellerPayoutCents,
       orderUrl: this.mail.url(`/commande/${order.id}`),
     });
+
+    // Les deux sœurs sont prévenues dans le site : l'une sait que son argent est
+    // sous séquestre, l'autre qu'il reste à expédier le colis.
+    await this.notifications.notify(order.buyerId, {
+      kind: 'ORDER_PAID',
+      title: `Commande ${order.reference} réglée`,
+      message: `« ${order.listing.title} » est réservé pour vous. Votre sœur vendeuse a été prévenue.`,
+      link: `/commande/${order.id}`,
+    });
+    await this.notifications.notify(order.sellerId, {
+      kind: 'ORDER_SOLD',
+      title: 'Votre article a trouvé une acheteuse',
+      message: `« ${order.listing.title} » vient d’être réglé : expédiez la commande ${order.reference}.`,
+      link: `/commande/${order.id}`,
+    });
   }
 
   // ————— Suivi (CDC §3.6) —————
@@ -278,7 +319,7 @@ export class OrdersService {
     })) as OrderWithRelations | null;
 
     if (!order) throw new NotFoundException('Nous ne retrouvons pas cette commande.');
-    if (order.sellerId !== sellerId) throw new ForbiddenException('Cette commande n’est pas la tienne.');
+    if (order.sellerId !== sellerId) throw new ForbiddenException('Cette commande n’est pas la vôtre.');
     if (order.status !== 'PAID') {
       throw new ConflictException('Cette commande ne peut pas encore être marquée comme expédiée.');
     }
@@ -296,6 +337,13 @@ export class OrdersService {
       orderUrl: this.mail.url(`/commande/${order.id}`),
     });
 
+    await this.notifications.notify(order.buyerId, {
+      kind: 'ORDER_SHIPPED',
+      title: `Commande ${order.reference} expédiée`,
+      message: `« ${order.listing.title} » est en route. Dès réception, pensez à confirmer : votre sœur récupérera alors son argent.`,
+      link: `/commande/${order.id}`,
+    });
+
     return this.toDto(updated, sellerId);
   }
 
@@ -310,7 +358,7 @@ export class OrdersService {
     })) as (OrderWithRelations & { seller: { stripeAccountId: string | null } }) | null;
 
     if (!order) throw new NotFoundException('Nous ne retrouvons pas cette commande.');
-    if (order.buyerId !== buyerId) throw new ForbiddenException('Cette commande n’est pas la tienne.');
+    if (order.buyerId !== buyerId) throw new ForbiddenException('Cette commande n’est pas la vôtre.');
     if (order.status !== 'SHIPPED' && order.status !== 'PAID') {
       throw new ConflictException('Cette commande ne peut plus être confirmée.');
     }
@@ -332,6 +380,13 @@ export class OrdersService {
       prenom: updated.seller.prenom,
       reference: updated.reference,
       payoutCents: updated.sellerPayoutCents,
+    });
+
+    await this.notifications.notify(updated.sellerId, {
+      kind: 'ORDER_RECEIVED',
+      title: `Commande ${updated.reference} reçue`,
+      message: `Votre sœur a bien reçu « ${updated.listing.title} ». Le reversement suivra dès validation, baraka Allahu fiki.`,
+      link: `/commande/${updated.id}`,
     });
 
     return this.toDto(updated, buyerId);
@@ -376,7 +431,7 @@ export class OrdersService {
       );
     }
 
-    if (!order.seller.stripeAccountId) {
+    if (!this.stripe.bypassConnect && !order.seller.stripeAccountId) {
       throw new ConflictException(
         'La vendeuse n’a pas terminé son inscription Stripe : le reversement est impossible.',
       );
@@ -389,7 +444,7 @@ export class OrdersService {
     let transferId: string;
     try {
       transferId = await this.stripe.releaseEscrow({
-        destinationAccountId: order.seller.stripeAccountId,
+        destinationAccountId: order.seller.stripeAccountId ?? 'acct_mock_bypass',
         amountCents: order.sellerPayoutCents,
         orderId: order.id,
         reference: order.reference,
@@ -399,7 +454,7 @@ export class OrdersService {
       const detail = (error as Error).message;
       this.logger.error(`Reversement refusé pour ${order.reference} : ${detail}`);
       throw new ConflictException(
-        `Stripe a refusé le reversement : ${detail}. La commande reste en attente, tu peux réessayer.`,
+        `Stripe a refusé le reversement : ${detail}. La commande reste en attente, vous pouvez réessayer.`,
       );
     }
 
@@ -415,6 +470,13 @@ export class OrdersService {
       prenom: updated.seller.prenom,
       reference: updated.reference,
       payoutCents: updated.sellerPayoutCents,
+    });
+
+    await this.notifications.notify(updated.sellerId, {
+      kind: 'PAYOUT_RELEASED',
+      title: `Reversement de la commande ${updated.reference} effectué`,
+      message: 'Le montant de votre vente a été versé sur votre compte bancaire. Qu’Allah vous bénisse !',
+      link: `/commande/${updated.id}`,
     });
 
     return this.toDto(updated, updated.sellerId);
@@ -447,7 +509,7 @@ export class OrdersService {
 
     if (!order) throw new NotFoundException('Nous ne retrouvons pas cette commande.');
     if (order.buyerId !== viewer.id && order.sellerId !== viewer.id && viewer.role !== 'ADMIN') {
-      throw new ForbiddenException('Cette commande n’est pas la tienne.');
+      throw new ForbiddenException('Cette commande n’est pas la vôtre.');
     }
 
     return this.toDto(order, viewer.id);
@@ -465,7 +527,7 @@ export class OrdersService {
       throw new ForbiddenException('Le bordereau d’envoi est réservé à la vendeuse.');
     }
     if (order.status === 'PENDING_PAYMENT') {
-      throw new ConflictException('Ton bordereau sera prêt dès que le paiement sera confirmé.');
+      throw new ConflictException('Votre bordereau sera prêt dès que le paiement sera confirmé.');
     }
 
     const buffer = await this.pdf.generateWaybill({
@@ -539,6 +601,19 @@ export class OrdersService {
           prenom: order.seller.prenom,
           reference: order.reference,
           payoutCents: order.sellerPayoutCents,
+        });
+
+        await this.notifications.notify(order.buyerId, {
+          kind: 'AUTO_CONFIRMED',
+          title: `Commande ${order.reference} : réception acquise`,
+          message: `Le délai de ${autoConfirmDays} jours est écoulé, la commande est considérée comme reçue. Si un souci existe, écrivez-nous depuis le centre d’aide.`,
+          link: `/commande/${order.id}`,
+        });
+        await this.notifications.notify(order.sellerId, {
+          kind: 'ORDER_RECEIVED',
+          title: `Commande ${order.reference} reçue`,
+          message: `« ${order.listing.title} » est considéré comme livré. Le reversement suivra une fois validé, in cha Allah.`,
+          link: `/commande/${order.id}`,
         });
 
         this.logger.log(

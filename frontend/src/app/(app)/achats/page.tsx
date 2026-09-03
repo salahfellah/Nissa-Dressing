@@ -9,9 +9,9 @@ export default function PurchasesPage() {
       <OrderList
         role="buyer"
         title="Mes achats"
-        subtitle="Suis tes commandes, du paiement à la réception."
+        subtitle="Suivez vos commandes, du paiement à la réception."
         emptyTitle="Aucun achat pour l’instant"
-        emptyDescription="Tes commandes apparaîtront ici, avec leur suivi et la messagerie associée."
+        emptyDescription="Vos commandes apparaîtront ici, avec leur suivi et la messagerie associée."
       />
     </RequireMember>
   );

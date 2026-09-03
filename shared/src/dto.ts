@@ -6,6 +6,7 @@ import type {
   ItemCondition,
   ListingStatus,
   MemberStatus,
+  NotificationKind,
   OrderStatus,
   PackageFormat,
   ReturnStatus,
@@ -162,6 +163,31 @@ export interface ConversationDto {
   orderStatus: OrderStatus;
 }
 
+/**
+ * Notification interne du site — « votre annonce est en ligne », « votre sœur
+ * vous a écrit », « il vous reste à expédier… ». Le lien est toujours relatif au site
+ * (jamais un slug de commande exposé en clair).
+ */
+export interface NotificationDto {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  message: string | null;
+  /** Chemin relatif du site vers la page concernée (équivaut à un lien). */
+  link: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface NotificationsResponseDto {
+  /** Ce qui reste à faire, recalculé à la volée — jamais stocké. */
+  todos: NotificationDto[];
+  /** Ce qui s’est passé, dernièrement d’abord. */
+  events: NotificationDto[];
+  /** Événements non lus + tâches à faire : c’est la pastille de la cloche. */
+  unreadCount: number;
+}
+
 export interface ReturnRequestDto {
   id: string;
   orderId: string;
@@ -217,6 +243,33 @@ export interface AdminStatsDto {
   escrowCents: number;
   /** Commissions encaissées sur les commandes libérées, en centimes. */
   revenueCents: number;
+  /**
+   * Trente derniers jours, jours creux compris.
+   *
+   * Les jours sans commande sont renvoyés à zéro plutôt qu'omis : une série
+   * qui saute les jours vides resserre le temps et laisse croire à une
+   * activité continue.
+   */
+  dailyActivity: DailyActivityDto[];
+  /** Répartition des commandes par statut — où elles sont bloquées. */
+  ordersByStatus: CountByKeyDto[];
+  /** Répartition du catalogue en ligne par catégorie. */
+  listingsByCategory: CountByKeyDto[];
+}
+
+/** Une journée d'activité de la place de marché. */
+export interface DailyActivityDto {
+  /** Jour, au format AAAA-MM-JJ. */
+  day: string;
+  orders: number;
+  /** Volume d'affaires du jour, en centimes. */
+  gmvCents: number;
+}
+
+/** Comptage générique par clé — statut de commande, catégorie d'annonce… */
+export interface CountByKeyDto {
+  key: string;
+  count: number;
 }
 
 export interface ContactRequestDto {
@@ -236,4 +289,44 @@ export interface EmailLogDto {
   template: string;
   sentAt: string;
   error: string | null;
+}
+
+/**
+ * Tableau de bord de l'espace personnel — CDC §3.2.
+ *
+ * Ce que la sœur a vendu, acheté et déposé, plus ce qu'il reste de son mois de
+ * mise en avant offert. Des nombres isolés, sans série ni évolution : ils
+ * s'affichent en tuiles, pas en graphique.
+ */
+export interface MemberDashboardDto {
+  sales: {
+    count: number;
+    /** Ce qui lui revient, commission déduite. */
+    payoutCents: number;
+    /** Part déjà virée sur son compte bancaire. */
+    transferredCents: number;
+    /** Ventes payées qui attendent leur colis. */
+    toShip: number;
+  };
+  purchases: {
+    count: number;
+    spentCents: number;
+    /** Colis expédiés dont elle n'a pas encore confirmé la réception. */
+    toReceive: number;
+  };
+  listings: {
+    published: number;
+    pendingReview: number;
+    sold: number;
+    /** Annonces actuellement en tête du catalogue. */
+    boosted: number;
+  };
+  /** Mois offert en cours, ou `null` s'il est consommé ou expiré. */
+  freeBoost: {
+    until: string;
+    /** Jours entiers restants, au moins 1 tant que le mois court. */
+    daysLeft: number;
+    /** Durée totale du mois offert, pour dessiner la jauge. */
+    totalDays: number;
+  } | null;
 }

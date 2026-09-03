@@ -37,7 +37,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: 'Un souci inattendu est survenu de notre côté. Réessaie dans un instant.',
+      message: 'Un souci inattendu est survenu de notre côté. Réessayez dans un instant.',
     });
   }
 }

@@ -5,6 +5,7 @@ import {
   profileSchema,
   type AddressInput,
   type ChangePasswordInput,
+  type MemberDashboardDto,
   type MeDto,
   type ProfileInput,
 } from '@nissa/shared';
@@ -19,6 +20,12 @@ export class AccountController {
     private readonly account: AccountService,
     private readonly auth: AuthService,
   ) {}
+
+  /** Tableau de bord de l'espace personnel — CDC §3.2. */
+  @Get('dashboard')
+  dashboard(@CurrentUser() user: AuthUser): Promise<MemberDashboardDto> {
+    return this.account.dashboard(user.id);
+  }
 
   @Put('profile')
   updateProfile(
@@ -43,7 +50,7 @@ export class AccountController {
     @Body(zodBody(changePasswordSchema)) body: ChangePasswordInput,
   ) {
     await this.auth.changePassword(user.id, body.currentPassword, body.newPassword);
-    return { message: 'Mot de passe modifié. Reconnecte-toi avec le nouveau.' };
+    return { message: 'Mot de passe modifié. Reconnectez-vous avec le nouveau.' };
   }
 
   // ————— Frais d'accès (CDC §3.1) —————

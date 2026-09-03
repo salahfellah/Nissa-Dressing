@@ -1,20 +1,31 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import type { AddressInput, MeDto, ProfileInput } from '@nissa/shared';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import type { AddressInput, MemberDashboardDto, MeDto, ProfileInput } from '@nissa/shared';
+import type { ListingStatus, OrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { SettingsService } from '../settings/settings.service';
 import { StripeService } from '../stripe/stripe.service';
 import { AuthService } from '../auth/auth.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { addDays } from '../common/utils/dates';
 
 @Injectable()
 export class AccountService {
+  private readonly logger = new Logger(AccountService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripe: StripeService,
     private readonly settings: SettingsService,
     private readonly mail: MailService,
     private readonly auth: AuthService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private async requireUser(userId: string) {
@@ -23,17 +34,116 @@ export class AccountService {
     return user;
   }
 
+  // ————— Tableau de bord de l'espace personnel (CDC §3.2) —————
+
+  /**
+   * Ce que la sœur a vendu, acheté, déposé, et ce qu'il reste de son mois offert.
+   *
+   * Les commandes annulées et remboursées sont écartées des totaux : elles
+   * n'ont rien rapporté ni rien coûté, et les compter donnerait une somme que
+   * la sœur ne retrouverait ni sur son relevé ni dans « Mes ventes ».
+   *
+   * Le montant des ventes est le reversement (`sellerPayoutCents`), pas le prix
+   * payé par l'acheteuse : c'est la somme qui arrive sur son compte, commission
+   * et frais de port déduits.
+   */
+  async dashboard(userId: string): Promise<MemberDashboardDto> {
+    const maintenant = new Date();
+    const abouties: OrderStatus[] = ['PAID', 'SHIPPED', 'RECEIVED'];
+
+    const [
+      nbVentes,
+      ventes,
+      reversees,
+      aExpedier,
+      nbAchats,
+      achats,
+      aRecevoir,
+      parStatut,
+      misesEnAvant,
+      user,
+    ] = await Promise.all([
+      this.prisma.order.count({ where: { sellerId: userId, status: { in: abouties } } }),
+      this.prisma.order.aggregate({
+        where: { sellerId: userId, status: { in: abouties } },
+        _sum: { sellerPayoutCents: true },
+      }),
+      this.prisma.order.aggregate({
+        where: {
+          sellerId: userId,
+          status: { in: abouties },
+          stripeTransferId: { not: null },
+        },
+        _sum: { sellerPayoutCents: true },
+      }),
+      this.prisma.order.count({ where: { sellerId: userId, status: 'PAID' } }),
+      this.prisma.order.count({ where: { buyerId: userId, status: { in: abouties } } }),
+      this.prisma.order.aggregate({
+        where: { buyerId: userId, status: { in: abouties } },
+        _sum: { totalCents: true },
+      }),
+      this.prisma.order.count({ where: { buyerId: userId, status: 'SHIPPED' } }),
+      this.prisma.listing.groupBy({
+        by: ['status'],
+        where: { sellerId: userId },
+        _count: { _all: true },
+      }),
+      this.prisma.listing.count({
+        where: { sellerId: userId, boostedUntil: { gt: maintenant } },
+      }),
+      this.requireUser(userId),
+    ]);
+
+    const annonces = (statut: ListingStatus): number =>
+      parStatut.find((ligne) => ligne.status === statut)?._count._all ?? 0;
+
+    const settings = await this.settings.get();
+    const finDuMoisOffert = user.freeBoostUntil;
+    const resteEnMs = finDuMoisOffert ? finDuMoisOffert.getTime() - maintenant.getTime() : 0;
+
+    return {
+      sales: {
+        count: nbVentes,
+        payoutCents: ventes._sum.sellerPayoutCents ?? 0,
+        transferredCents: reversees._sum.sellerPayoutCents ?? 0,
+        toShip: aExpedier,
+      },
+      purchases: {
+        count: nbAchats,
+        spentCents: achats._sum.totalCents ?? 0,
+        toReceive: aRecevoir,
+      },
+      listings: {
+        published: annonces('PUBLISHED'),
+        pendingReview: annonces('PENDING_REVIEW'),
+        sold: annonces('SOLD'),
+        boosted: misesEnAvant,
+      },
+      freeBoost:
+        finDuMoisOffert && resteEnMs > 0
+          ? {
+              until: finDuMoisOffert.toISOString(),
+              // Arrondi au jour supérieur : tant qu'il reste des heures, il
+              // reste « un jour » — annoncer 0 alors que le mois court encore
+              // ferait croire à une mise en avant déjà éteinte.
+              daysLeft: Math.ceil(resteEnMs / 86_400_000),
+              totalDays: settings.freeBoostDays,
+            }
+          : null,
+    };
+  }
+
   // ————— Frais d'accès de 5 € (CDC §3.1) —————
 
   async createAccessFeeCheckout(userId: string): Promise<{ url: string; isMock: boolean }> {
     const user = await this.requireUser(userId);
 
     if (user.accessFeePaidAt) {
-      throw new ConflictException('Tes frais d’accès sont déjà réglés, baraka Allahu fiki.');
+      throw new ConflictException('Vos frais d’accès sont déjà réglés, baraka Allahu fiki.');
     }
     if (user.status !== 'AWAITING_PAYMENT') {
       throw new BadRequestException(
-        'Ta candidature doit d’abord être acceptée par l’administratrice.',
+        'Votre candidature doit d’abord être acceptée par l’administratrice.',
       );
     }
 
@@ -76,6 +186,13 @@ export class AccountService {
     await this.mail.send('accessFeePaid', updated.email, {
       prenom: updated.prenom,
       loginUrl: this.mail.url('/connexion'),
+    });
+
+    await this.notifications.notify(updated.id, {
+      kind: 'ACCESS_FEE_PAID',
+      title: 'Frais d’accès réglés',
+      message: 'Merci ma sœur ! Votre mois de mise en avant offert vous attend : connectez-vous pour terminer la configuration.',
+      link: '/connexion',
     });
 
     return this.auth.toMeDto(updated);
@@ -130,6 +247,20 @@ export class AccountService {
 
   // ————— Stripe Connect (CDC §3.2 / §4.3) —————
 
+  private shouldRecreateStripeAccount(error: unknown): boolean {
+    const stripeError = error as Error & {
+      code?: string;
+      param?: string;
+      raw?: { code?: string; param?: string };
+    };
+
+    return (
+      (stripeError.code === 'resource_missing' && stripeError.param === 'account') ||
+      (stripeError.raw?.code === 'resource_missing' && stripeError.raw?.param === 'account') ||
+      /No such account/i.test(stripeError.message ?? '')
+    );
+  }
+
   /**
    * Ouvre l'onboarding Stripe Connect. Les coordonnées bancaires sont saisies
    * chez Stripe : aucune donnée bancaire ne transite ni n'est stockée ici.
@@ -137,21 +268,101 @@ export class AccountService {
   async startStripeOnboarding(userId: string): Promise<{ url: string; isMock: boolean }> {
     const user = await this.requireUser(userId);
 
-    let accountId = user.stripeAccountId;
-    if (!accountId) {
-      accountId = await this.stripe.createConnectedAccount({ email: user.email, userId: user.id });
-      await this.prisma.user.update({
+    if (this.stripe.bypassConnect) {
+      const accountId =
+        user.stripeAccountId ??
+        (await this.stripe.createConnectedAccount({
+          email: user.email,
+          userId: user.id,
+        }));
+      const updated = await this.prisma.user.update({
         where: { id: user.id },
-        data: { stripeAccountId: accountId, stripeConnectStatus: 'PENDING' },
+        data: { stripeAccountId: accountId, stripeConnectStatus: 'COMPLETE' },
       });
+
+      if (user.stripeConnectStatus !== 'COMPLETE') {
+        await this.notifications.notify(updated.id, {
+          kind: 'STRIPE_READY',
+          title: 'Compte de paiement pret en test',
+          message: 'Stripe Connect est ignore en local : vous pouvez tester les ventes tout de suite.',
+          link: '/compte',
+        });
+      }
+
+      return { url: '/compte', isMock: this.stripe.isMock };
     }
 
-    return { url: await this.stripe.createOnboardingLink(accountId), isMock: this.stripe.isMock };
+    try {
+      const createAndStoreAccount = async (): Promise<string> => {
+        const accountId = await this.stripe.createConnectedAccount({
+          email: user.email,
+          userId: user.id,
+        });
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { stripeAccountId: accountId, stripeConnectStatus: 'PENDING' },
+        });
+        return accountId;
+      };
+
+      let accountId = user.stripeAccountId;
+      if (!accountId || accountId.startsWith('acct_mock_')) {
+        accountId = await createAndStoreAccount();
+      }
+
+      try {
+        return { url: await this.stripe.createOnboardingLink(accountId), isMock: this.stripe.isMock };
+      } catch (error) {
+        if (!this.stripe.isMock && this.shouldRecreateStripeAccount(error)) {
+          this.logger.warn(
+            `Compte Stripe introuvable pour ${user.email} (${accountId}) : recréation en test mode.`,
+          );
+          const replacementAccountId = await createAndStoreAccount();
+          return {
+            url: await this.stripe.createOnboardingLink(replacementAccountId),
+            isMock: this.stripe.isMock,
+          };
+        }
+        throw error;
+      }
+    } catch (error) {
+      // Un refus de Stripe porte presque toujours la marche à suivre — activer
+      // Connect, changer de version d'API. Le remplacer par « un souci
+      // inattendu » oblige à aller lire les journaux du serveur pour découvrir
+      // une réponse que Stripe avait déjà donnée.
+      const detail = (error as Error).message;
+      this.logger.error(`Onboarding Stripe impossible pour ${user.email} : ${detail}`);
+      throw new ConflictException(`Stripe a refusé la configuration : ${detail}`);
+    }
   }
 
   /** Interroge Stripe et met à jour le statut du compte connecté. */
   async refreshStripeStatus(userId: string): Promise<MeDto> {
     const user = await this.requireUser(userId);
+
+    if (this.stripe.bypassConnect) {
+      const accountId =
+        user.stripeAccountId ??
+        (await this.stripe.createConnectedAccount({
+          email: user.email,
+          userId: user.id,
+        }));
+      const updated = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { stripeAccountId: accountId, stripeConnectStatus: 'COMPLETE' },
+      });
+
+      if (user.stripeConnectStatus !== 'COMPLETE') {
+        await this.notifications.notify(user.id, {
+          kind: 'STRIPE_READY',
+          title: 'Coordonnees bancaires operationnelles en test',
+          message: 'Stripe Connect est ignore en local : vous pouvez publier et vendre sans formulaire bancaire.',
+          link: '/compte',
+        });
+      }
+
+      return this.auth.toMeDto(updated);
+    }
 
     if (!user.stripeAccountId) {
       return this.auth.toMeDto(user);
@@ -162,6 +373,17 @@ export class AccountService {
       where: { id: user.id },
       data: { stripeConnectStatus: ready ? 'COMPLETE' : 'PENDING' },
     });
+
+    // On ne prévient qu'au passage à COMPLETE : la re-vérification droite
+    // gauche ne doit pas répéter le message à chaque fois.
+    if (ready && user.stripeConnectStatus !== 'COMPLETE') {
+      await this.notifications.notify(user.id, {
+        kind: 'STRIPE_READY',
+        title: 'Coordonnées bancaires opérationnelles',
+        message: 'Vous pouvez maintenant publier des annonces : chacune de vos ventes pourra être reversée.',
+        link: '/configuration-compte',
+      });
+    }
 
     return this.auth.toMeDto(updated);
   }
@@ -184,7 +406,7 @@ export class AccountService {
 
     if (!user.addressLine1 || !user.postalCode || !user.city) {
       throw new BadRequestException({
-        message: 'Renseigne ton adresse postale pour continuer.',
+        message: 'Renseignez votre adresse postale pour continuer.',
         step: 'address',
       });
     }
@@ -194,7 +416,7 @@ export class AccountService {
     }
 
     if (user.status !== 'ONBOARDING' && user.status !== 'PAYMENT_DONE') {
-      throw new BadRequestException('Ton compte n’est plus à l’étape de configuration.');
+      throw new BadRequestException('Votre compte n’est plus à l’étape de configuration.');
     }
 
     const updated = await this.prisma.user.update({

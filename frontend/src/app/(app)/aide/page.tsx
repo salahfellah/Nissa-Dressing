@@ -19,7 +19,7 @@ const FAQ = [
   {
     question: 'Qui peut s’inscrire sur Nissa Dressing ?',
     answer:
-      'La plateforme est réservée aux femmes musulmanes voilées, francophones et majeures. L’inscription passe par une question d’éligibilité, un formulaire, puis un enregistrement audio dans lequel tu prêtes serment. Chaque candidature est examinée manuellement par l’administratrice.',
+      'La plateforme est réservée aux femmes musulmanes voilées, francophones et majeures. L’inscription passe par une question d’éligibilité, un formulaire, puis un enregistrement audio dans lequel vous prêtez serment. Chaque candidature est examinée manuellement par l’administratrice.',
   },
   {
     question: 'Pourquoi 5 € à l’inscription ?',
@@ -29,22 +29,22 @@ const FAQ = [
   {
     question: 'Comment mon argent est-il protégé quand j’achète ?',
     answer:
-      'Le montant est débité à la commande mais conservé en sécurité par notre prestataire de paiement Stripe. Il n’est reversé à la vendeuse qu’une fois que tu as confirmé la bonne réception du colis. Si l’article ne correspond pas, tu peux ouvrir une demande de retour avant de confirmer.',
+      'Le montant est débité à la commande mais conservé en sécurité par notre prestataire de paiement Stripe. Il n’est reversé à la vendeuse qu’une fois que vous avez confirmé la bonne réception du colis. Si l’article ne correspond pas, vous pouvez ouvrir une demande de retour avant de confirmer.',
   },
   {
     question: 'Quand suis-je payée pour mes ventes ?',
     answer:
-      'Dès que l’acheteuse confirme la réception de son colis, ta part est transférée sur ton compte Stripe. Le virement vers ton compte bancaire suit ensuite le calendrier habituel de Stripe.',
+      'Dès que l’acheteuse confirme la réception de son colis, votre part est transférée sur votre compte Stripe. Le virement vers votre compte bancaire suit ensuite le calendrier habituel de Stripe.',
   },
   {
     question: 'Pourquoi mon annonce doit-elle être validée ?',
     answer:
-      'Chaque annonce est relue avant publication afin de garantir la conformité des articles proposés. Tu reçois un e-mail dès qu’une décision est prise ; en cas de refus, le motif t’est communiqué et tu peux corriger puis soumettre à nouveau.',
+      'Chaque annonce est relue avant publication afin de garantir la conformité des articles proposés. Vous recevez un e-mail dès qu’une décision est prise ; en cas de refus, le motif vous est communiqué et vous pouvez corriger puis soumettre à nouveau.',
   },
   {
     question: 'Quelles photos ai-je le droit de publier ?',
     answer:
-      'Les photos ne doivent pas être prises portées sur toi ou sur une tierce personne, sauf pour les vêtements couvrants (abaya, khimar, hijab, jilbeb, sittar, niqab, gants). Tout vêtement comportant une représentation d’âme (être animé) est refusé.',
+      'Les photos ne doivent pas être prises portées sur vous ou sur une tierce personne, sauf pour les vêtements couvrants (abaya, khimar, hijab, jilbeb, sittar, niqab, gants). Tout vêtement comportant une représentation d’âme (être animé) est refusé.',
   },
   {
     question: 'Qui paie les frais de port ?',
@@ -54,17 +54,17 @@ const FAQ = [
   {
     question: 'Comment envoyer mon colis ?',
     answer:
-      'Après la vente, télécharge le bordereau d’envoi depuis la page de ta commande, imprime-le, colle-le sur le colis et dépose-le au bureau de poste ou en point relais. Indique ensuite « Colis expédié » sur le site pour prévenir l’acheteuse.',
+      'Après la vente, téléchargez le bordereau d’envoi depuis la page de votre commande, imprimez-le, collez-le sur le colis et déposez-le au bureau de poste ou en point relais. Indiquez ensuite « Colis expédié » sur le site pour prévenir l’acheteuse.',
   },
   {
     question: 'L’article reçu ne correspond pas, que faire ?',
     answer:
-      'Ouvre une demande de retour depuis la page de ta commande, avec des photos de l’article et du problème. L’administratrice examine ta demande ; si elle est acceptée, un bordereau de retour t’est fourni et tu es remboursée dès le retour confirmé.',
+      'Ouvrez une demande de retour depuis la page de votre commande, avec des photos de l’article et du problème. L’administratrice examine votre demande ; si elle est acceptée, un bordereau de retour vous est fourni et vous êtes remboursée dès le retour confirmé.',
   },
   {
     question: 'Que devient mon enregistrement audio ?',
     answer:
-      'Il est stocké de façon confidentielle et n’est écouté que par l’administratrice, dans le seul but de valider ton inscription. Si ta candidature n’est pas retenue, il est supprimé immédiatement. Tu peux demander son effacement à tout moment.',
+      'Il est stocké de façon confidentielle et n’est écouté que par l’administratrice, dans le seul but de valider votre inscription. Si votre candidature n’est pas retenue, il est supprimé immédiatement. Vous pouvez demander son effacement à tout moment.',
   },
 ];
 
@@ -134,12 +134,12 @@ export default function HelpPage() {
           Nous écrire
         </h2>
         <p className="text-sm text-taupe mb-5">
-          Ta question n’est pas dans la liste ? Décris ton problème, nous te répondrons par e-mail.
+          Votre question n’est pas dans la liste ? Décrivez votre problème, nous vous répondrons par e-mail.
         </p>
 
         {sent ? (
           <Alert variant="success" title="Message envoyé">
-            Ton message a bien été transmis à l’administratrice. Tu recevras une réponse par e-mail
+            Votre message a bien été transmis à l’administratrice. Vous recevrez une réponse par e-mail
             dans les meilleurs délais, in cha Allah.
           </Alert>
         ) : (
@@ -162,9 +162,9 @@ export default function HelpPage() {
                 {...register('pseudo')}
               />
               <Textarea
-                label="Décris ton problème"
+                label="Décrivez votre problème"
                 rows={6}
-                placeholder="Explique ta situation le plus précisément possible : référence de commande, pseudo concerné, dates…"
+                placeholder="Expliquez votre situation le plus précisément possible : référence de commande, pseudo concerné, dates…"
                 required
                 error={errors.message?.message}
                 {...register('message')}
@@ -180,7 +180,7 @@ export default function HelpPage() {
       </Card>
 
       <p className="text-xs text-taupe text-center mt-8">
-        Pour tout ce qui concerne tes données personnelles, consulte notre{' '}
+        Pour tout ce qui concerne vos données personnelles, consultez notre{' '}
         <Link href="/legal/rgpd" className="underline">
           politique de confidentialité
         </Link>

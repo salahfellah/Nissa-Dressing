@@ -123,7 +123,7 @@ export default function AdminSettingsPage() {
               />
             </div>
             <div className="flex-1">
-              {moneyField('commissionFixedCents', 'Part fixe (€)', 'Laisse 0 pour un pourcentage seul.')}
+              {moneyField('commissionFixedCents', 'Part fixe (€)', 'Laissez 0 pour un pourcentage seul.')}
             </div>
           </div>
 

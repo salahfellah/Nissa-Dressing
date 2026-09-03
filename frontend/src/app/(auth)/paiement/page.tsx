@@ -26,7 +26,7 @@ export default function AccessPaymentPage() {
       window.location.href = url;
     } catch (exception) {
       setError(
-        exception instanceof ApiError ? exception.message : 'Le paiement n’a pas pu démarrer. Réessaie dans un instant.',
+        exception instanceof ApiError ? exception.message : 'Le paiement n’a pas pu démarrer. Réessayez dans un instant.',
       );
       setIsRedirecting(false);
     }
@@ -34,13 +34,13 @@ export default function AccessPaymentPage() {
 
   return (
     <RequireStatus allowed={['AWAITING_PAYMENT']}>
-      <StatusShell title="Ta candidature est acceptée !">
+      <StatusShell title="Votre candidature est acceptée !">
         <div className="mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-6 bg-orDore text-white">
           <Check size={26} />
         </div>
 
         <p className="text-sm text-brunProfond leading-relaxed mb-6">
-          Bienvenue parmi nous. Il ne te reste qu’une étape : régler la participation unique de{' '}
+          Bienvenue parmi nous. Il ne vous reste qu’une étape : régler la participation unique de{' '}
           <strong>{formatPrice(settings.accessFeeCents)}</strong>.
         </p>
 

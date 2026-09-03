@@ -95,3 +95,43 @@ export const CommissionPayer = {
   SELLER: 'SELLER',
 } as const;
 export type CommissionPayer = (typeof CommissionPayer)[keyof typeof CommissionPayer];
+
+/**
+ * Nature d'une notification interne — miroir de l'enum Prisma.
+ *
+ * Les fiches « À faire » (TODO_*) ne sont pas stockées : elles sont recalculées
+ * à chaque lecture de la liste, à partir de l'état réel du compte. Les autres
+ * sont des événements enregistrés.
+ */
+export const NotificationKind = {
+  // ————— Événements : ce qui s'est passé —————
+  LISTING_SUBMITTED: 'LISTING_SUBMITTED',
+  LISTING_APPROVED: 'LISTING_APPROVED',
+  LISTING_REJECTED: 'LISTING_REJECTED',
+  ORDER_PAID: 'ORDER_PAID',
+  ORDER_SOLD: 'ORDER_SOLD',
+  ORDER_SHIPPED: 'ORDER_SHIPPED',
+  ORDER_RECEIVED: 'ORDER_RECEIVED',
+  PAYOUT_RELEASED: 'PAYOUT_RELEASED',
+  AUTO_CONFIRMED: 'AUTO_CONFIRMED',
+  MESSAGE: 'MESSAGE',
+  ACCESS_FEE_PAID: 'ACCESS_FEE_PAID',
+  BOOST_ACTIVATED: 'BOOST_ACTIVATED',
+  APPLICATION_ACCEPTED: 'APPLICATION_ACCEPTED',
+  STRIPE_READY: 'STRIPE_READY',
+  RETURN_REQUESTED: 'RETURN_REQUESTED',
+  RETURN_ACCEPTED: 'RETURN_ACCEPTED',
+  RETURN_REJECTED: 'RETURN_REJECTED',
+  REFUND_ISSUED: 'REFUND_ISSUED',
+  INFO: 'INFO',
+
+  // ————— Rappels : ce qu'il reste à faire —————
+  TODO_ACCESS_FEE: 'TODO_ACCESS_FEE',
+  TODO_ONBOARDING: 'TODO_ONBOARDING',
+  TODO_STRIPE: 'TODO_STRIPE',
+  TODO_LISTING_REVIEW: 'TODO_LISTING_REVIEW',
+  TODO_SHIP: 'TODO_SHIP',
+  TODO_CONFIRM_RECEPTION: 'TODO_CONFIRM_RECEPTION',
+  TODO_ADMIN_REVIEW: 'TODO_ADMIN_REVIEW',
+} as const;
+export type NotificationKind = (typeof NotificationKind)[keyof typeof NotificationKind];

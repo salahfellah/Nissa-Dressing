@@ -25,6 +25,7 @@ import { useAuth } from '@/lib/auth-context';
 function SellForm() {
   const router = useRouter();
   const { user } = useAuth();
+  const stripePending = user?.stripeConnectStatus === 'PENDING';
 
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [noBrand, setNoBrand] = useState(true);
@@ -53,7 +54,7 @@ function SellForm() {
           setTimeout(() => router.push('/compte'), 2500);
         }
       } else {
-        setFormError('Ton annonce n’a pas pu être envoyée. Réessaie dans un instant, in cha Allah.');
+        setFormError('Votre annonce n’a pas pu être envoyée. Réessayez dans un instant, in cha Allah.');
       }
     }
   };
@@ -75,15 +76,24 @@ function SellForm() {
       <header className="mb-8">
         <h1 className="font-playfair text-2xl md:text-3xl text-noirIntense mb-2">Vendre un article</h1>
         <p className="text-sm text-taupe">
-          Prends le temps de bien décrire ta pièce : c’est ce qui met les sœurs en confiance.
+          Prenez le temps de bien décrire votre pièce : c’est ce qui met les sœurs en confiance.
         </p>
       </header>
 
       {user?.stripeConnectStatus !== 'COMPLETE' && (
-        <Alert variant="warning" title="Il te manque tes coordonnées bancaires">
-          Elles sont nécessaires pour que tu puisses recevoir le paiement de tes ventes.{' '}
+        <Alert
+          variant="warning"
+          title={
+            stripePending
+              ? 'Votre configuration Stripe est en cours'
+              : 'Il vous manque vos coordonnées bancaires'
+          }
+        >
+          {stripePending
+            ? 'Terminez le formulaire Stripe, puis actualisez votre compte pour pouvoir publier.'
+            : 'Elles sont nécessaires pour que vous puissiez recevoir le paiement de vos ventes.'}{' '}
           <Link href="/compte" className="underline font-semibold">
-            Les configurer maintenant
+            {stripePending ? 'Continuer la configuration' : 'Les configurer maintenant'}
           </Link>
         </Alert>
       )}
@@ -115,7 +125,7 @@ function SellForm() {
           <span className="flex items-start gap-2">
             <Info size={14} className="shrink-0 mt-0.5" />
             <span>
-              C’est ce qui garantit la conformité des articles proposés entre sœurs. Tu peux
+              C’est ce qui garantit la conformité des articles proposés entre sœurs. Vous pouvez
               consulter la{' '}
               <Link href="/legal/charte-de-moderation" target="_blank" className="underline">
                 charte de modération

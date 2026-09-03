@@ -21,6 +21,7 @@ import { ReturnsModule } from './returns/returns.module';
 import { SupportModule } from './support/support.module';
 import { AdminModule } from './admin/admin.module';
 import { PaymentsModule } from './payments/payments.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
@@ -49,6 +50,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     SupportModule,
     AdminModule,
     PaymentsModule,
+    NotificationsModule,
   ],
   providers: [
     // Authentification appliquée par défaut : une route est protégée sauf @Public().

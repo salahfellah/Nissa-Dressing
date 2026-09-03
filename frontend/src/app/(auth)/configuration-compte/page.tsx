@@ -75,7 +75,7 @@ function OnboardingContent() {
       setError(
         exception instanceof ApiError
           ? exception.message
-          : 'Nous n’avons pas pu finaliser ton compte. Réessaie dans un instant.',
+          : 'Nous n’avons pas pu finaliser votre compte. Réessayez dans un instant.',
       );
       setIsFinishing(false);
     }
@@ -89,8 +89,8 @@ function OnboardingContent() {
           Bienvenue {user?.prenom} !
         </h1>
         <p className="text-sm text-taupe max-w-md mx-auto leading-relaxed">
-          Encore quelques informations et tu pourras commencer. Tu pourras les modifier à tout
-          moment depuis ton espace personnel.
+          Encore quelques informations et vous pourrez commencer. Vous pourrez les modifier à tout
+          moment depuis votre espace personnel.
         </p>
       </div>
 
@@ -100,8 +100,8 @@ function OnboardingContent() {
         <StepHeader
           done={hasAddress}
           icon={MapPin}
-          title="Ton adresse postale"
-          subtitle="Elle figure comme adresse d’expédition sur le bordereau de tes ventes."
+          title="Votre adresse postale"
+          subtitle="Elle figure comme adresse d’expédition sur le bordereau de vos ventes."
         />
         <AddressForm />
       </Card>
@@ -110,13 +110,13 @@ function OnboardingContent() {
         <StepHeader
           done={stripeReady}
           icon={CreditCard}
-          title="Tes coordonnées bancaires"
-          subtitle="Pour recevoir le paiement de tes ventes."
+          title="Vos coordonnées bancaires"
+          subtitle="Pour recevoir le paiement de vos ventes."
         />
         <StripeCard compact />
         {!stripeReady && (
           <p className="text-xs text-taupe mt-3 text-center">
-            Tu peux passer cette étape et y revenir plus tard : elle n’est indispensable que pour
+            Vous pouvez passer cette étape et y revenir plus tard : elle n’est indispensable que pour
             publier une annonce.
           </p>
         )}
@@ -128,7 +128,7 @@ function OnboardingContent() {
 
       {!hasAddress && (
         <p className="text-xs text-taupe mt-3 text-center">
-          Enregistre d’abord ton adresse postale pour continuer.
+          Enregistrez d’abord votre adresse postale pour continuer.
         </p>
       )}
     </main>

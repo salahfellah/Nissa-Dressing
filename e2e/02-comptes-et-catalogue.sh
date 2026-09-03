@@ -8,7 +8,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 require_api
 
 STAMP=$(date +%s)
-login admin "admin@nissa-dressing.fr" "Admin1234" > /dev/null
+login admin "$ADMIN_EMAIL" "$ADMIN_PASSWORD" > /dev/null
 login mem "amina@exemple.fr" "Soeur1234" > /dev/null
 
 step "A. Mot de passe oublié et réinitialisation"
@@ -58,13 +58,14 @@ LID=$(create_published_listing boost admin "Abaya a mettre en avant $STAMP")
 if [ -n "$LID" ]; then
   ok "annonce de test publiée"
 
+  # Le mois offert ne se réclame plus : toute annonce publiée pendant qu'il
+  # court paraît déjà en avant, et le mois vaut pour les suivantes.
   if [ -n "$(as boost "$API/auth/me" | get freeBoostUntil)" ]; then
-    R=$(as boost -X POST "$API/listings/$LID/boost/free")
-    [ "$(echo "$R" | get isBoosted)" = "true" ] && ok "boost offert appliqué" || fail "boost gratuit: $R"
-    [ -z "$(as boost "$API/auth/me" | get freeBoostUntil)" ] && ok "crédit consommé, non reportable" || fail "crédit encore disponible"
-    as boost -X POST "$API/listings/$LID/boost/free" | grep -q "plus disponible" && ok "second usage refusé" || fail "boost réutilisable"
+    [ "$(curl -s "$API/listings/$LID" | get isBoosted)" = "true" ]       && ok "mois offert : annonce mise en avant dès sa publication"       || fail "annonce publiée pendant le mois offert mais non mise en avant"
+    LID2=$(create_published_listing boost admin "Deuxieme abaya du mois offert $STAMP")
+    [ "$(curl -s "$API/listings/$LID2" | get isBoosted)" = "true" ]       && ok "le mois offert vaut aussi pour l'annonce suivante"       || fail "mois offert consommé par la première annonce"
   else
-    ok "boost offert déjà consommé sur ce compte (étape ignorée)"
+    ok "mois offert expiré sur ce compte (étape ignorée)"
   fi
 
   as boost -X POST "$API/listings/$LID/boost/checkout" | grep -q "paiement-simule" && ok "checkout du boost payant généré" || fail "checkout boost"

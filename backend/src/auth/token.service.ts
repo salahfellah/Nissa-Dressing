@@ -93,7 +93,7 @@ export class TokenService {
   /** Vérifie le jeton de rafraîchissement, le révoque et en émet un nouveau. */
   async rotate(res: Response, refreshToken: string | undefined): Promise<string> {
     if (!refreshToken) {
-      throw new UnauthorizedException('Ta session a expiré. Reconnecte-toi, ce sera rapide.');
+      throw new UnauthorizedException('Votre session a expiré. Reconnectez-vous, ce sera rapide.');
     }
 
     const stored = await this.prisma.refreshToken.findUnique({
@@ -102,7 +102,7 @@ export class TokenService {
     });
 
     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
-      throw new UnauthorizedException('Ta session a expiré. Reconnecte-toi, ce sera rapide.');
+      throw new UnauthorizedException('Votre session a expiré. Reconnectez-vous, ce sera rapide.');
     }
 
     await this.prisma.refreshToken.update({

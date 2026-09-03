@@ -38,7 +38,7 @@ export default function LoginPage() {
         }
         setFormError(error.message);
       } else {
-        setFormError('Connexion impossible. Réessaie dans un instant.');
+        setFormError('Connexion impossible. Réessayez dans un instant.');
       }
     }
   };
@@ -58,7 +58,7 @@ export default function LoginPage() {
           <div className="mb-10 text-center">
             <Logo size="small" />
             <h1 className="text-2xl font-playfair mt-8 mb-2 text-brunProfond">Bon retour</h1>
-            <p className="text-sm text-taupe">Connecte-toi pour accéder à ton dressing</p>
+            <p className="text-sm text-taupe">Connectez-vous pour accéder à votre dressing</p>
           </div>
 
           {formError && <Alert variant="error">{formError}</Alert>}

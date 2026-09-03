@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <>
             <p className="text-sm text-taupe text-center mb-6">
-              Renseigne ton adresse e-mail : nous t’enverrons un lien de réinitialisation.
+              Renseignez votre adresse e-mail : nous vous enverrons un lien de réinitialisation.
             </p>
 
             {error && <Alert variant="error">{error}</Alert>}

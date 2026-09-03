@@ -1,5 +1,8 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
+  type CountByKeyDto,
+  type DailyActivityDto,
   RETURN_REASON_LABELS,
   type AdminMemberDto,
   type AdminStatsDto,
@@ -13,18 +16,26 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { SettingsService } from '../settings/settings.service';
 import { UploadsService } from '../uploads/uploads.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { toListingDto } from '../listings/listings.mapper';
+import type { AppConfig } from '../config/configuration';
 
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
+  private readonly stripeBypassConnect: boolean;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly settings: SettingsService,
     private readonly uploads: UploadsService,
-  ) {}
+    private readonly notifications: NotificationsService,
+    config: ConfigService,
+  ) {
+    this.stripeBypassConnect =
+      config.getOrThrow<AppConfig['stripe']>('stripe').bypassConnect;
+  }
 
   // ————— Tableau de bord —————
 
@@ -66,7 +77,16 @@ export class AdminService {
       }),
     ]);
 
+    const [dailyActivity, ordersByStatus, listingsByCategory] = await Promise.all([
+      this.dailyActivity(),
+      this.ordersByStatus(),
+      this.listingsByCategory(),
+    ]);
+
     return {
+      dailyActivity,
+      ordersByStatus,
+      listingsByCategory,
       pendingApplications,
       pendingListings,
       pendingReturns,
@@ -76,6 +96,57 @@ export class AdminService {
       escrowCents: escrow._sum.sellerPayoutCents ?? 0,
       revenueCents: released._sum.commissionCents ?? 0,
     };
+  }
+
+  /**
+   * Activité des trente derniers jours, un point par jour.
+   *
+   * La série est construite depuis `generate_series` et non depuis les
+   * commandes : ainsi les journées sans vente existent bel et bien, à zéro.
+   * Les regrouper par commande omettrait ces jours et resserrerait le temps,
+   * donnant à trois ventes espacées l'allure d'une activité continue.
+   *
+   * Les paniers jamais réglés sont écartés : ils disparaissent d'eux-mêmes au
+   * bout de trente minutes et ne représentent aucune activité réelle.
+   */
+  private async dailyActivity(): Promise<DailyActivityDto[]> {
+    return this.prisma.$queryRaw<DailyActivityDto[]>`
+      SELECT to_char(d.day, 'YYYY-MM-DD') AS day,
+             COUNT(o.id)::int AS orders,
+             COALESCE(SUM(o."totalCents"), 0)::int AS "gmvCents"
+      FROM generate_series(
+             CURRENT_DATE - INTERVAL '29 days', CURRENT_DATE, INTERVAL '1 day'
+           ) AS d(day)
+      LEFT JOIN "Order" o
+             ON o."createdAt" >= d.day
+            AND o."createdAt" < d.day + INTERVAL '1 day'
+            AND o.status <> 'PENDING_PAYMENT'
+      GROUP BY d.day
+      ORDER BY d.day
+    `;
+  }
+
+  /** Où en sont les commandes — c'est là que se voient les blocages. */
+  private async ordersByStatus(): Promise<CountByKeyDto[]> {
+    const rows = await this.prisma.order.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    });
+    return rows
+      .map((row) => ({ key: row.status as string, count: row._count._all }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  /** Composition du catalogue réellement en ligne. */
+  private async listingsByCategory(): Promise<CountByKeyDto[]> {
+    const rows = await this.prisma.listing.groupBy({
+      by: ['categoryId'],
+      where: { status: 'PUBLISHED' },
+      _count: { _all: true },
+    });
+    return rows
+      .map((row) => ({ key: row.categoryId, count: row._count._all }))
+      .sort((a, b) => b.count - a.count);
   }
 
   // ————— File de validation des inscriptions (CDC §3.9) —————
@@ -142,6 +213,13 @@ export class AdminService {
         paymentUrl: this.mail.url('/paiement'),
       });
 
+      await this.notifications.notify(user.id, {
+        kind: 'APPLICATION_ACCEPTED',
+        title: 'Votre candidature a été acceptée',
+        message: `Il ne reste que la participation de ${(settings.accessFeeCents / 100).toLocaleString('fr-FR')} € pour vous ouvrir le site, avec un mois de mise en avant offert.`,
+        link: '/paiement',
+      });
+
       return { message: `Candidature de ${user.pseudo} acceptée. E-mail de paiement envoyé.` };
     }
 
@@ -169,11 +247,19 @@ export class AdminService {
 
   // ————— File de modération des annonces (CDC §3.9) —————
 
+  /**
+   * File de modération, la dernière annonce déposée en tête.
+   *
+   * L'ordre d'arrivée reculait le dépôt du jour derrière toute la file :
+   * l'administratrice ouvrait la page sans y voir ce qu'elle venait d'être
+   * prévenue de relire. La file reste courte — une annonce n'y séjourne pas —,
+   * si bien que rien n'y attend indéfiniment son tour.
+   */
   async pendingListings(): Promise<ListingDto[]> {
     const [rows, settings] = await Promise.all([
       this.prisma.listing.findMany({
         where: { status: 'PENDING_REVIEW' },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: 'desc' },
         include: {
           seller: { select: { id: true, pseudo: true, createdAt: true } },
           _count: { select: { favorites: true } },
@@ -201,6 +287,26 @@ export class AdminService {
       throw new ConflictException('Cette annonce a déjà été modérée.');
     }
 
+    /**
+     * Mois de mise en avant offert à l'inscription (CDC §3.1).
+     *
+     * Il ne se réclame pas : tant qu'il court, toute annonce qui paraît part
+     * en tête du catalogue, jusqu'à sa dernière heure. La mise en avant est
+     * donc posée ici, au seul endroit où une annonce devient visible — une
+     * annonce encore en modération n'a rien à gagner à être « en avant ».
+     *
+     * La date de fin n'est jamais raccourcie : une annonce déjà mise en avant
+     * plus longtemps (boost payant) garde la sienne.
+     */
+    const finDuMoisOffert = listing.seller.freeBoostUntil;
+    const moisOffertEnCours =
+      accepted && !!finDuMoisOffert && finDuMoisOffert.getTime() > Date.now();
+    const boostedUntil =
+      moisOffertEnCours &&
+      (!listing.boostedUntil || listing.boostedUntil.getTime() < finDuMoisOffert!.getTime())
+        ? finDuMoisOffert!
+        : undefined;
+
     await this.prisma.listing.update({
       where: { id: listingId },
       data: {
@@ -209,6 +315,7 @@ export class AdminService {
         moderatedAt: new Date(),
         moderatedById: adminId,
         ...(accepted ? { publishedAt: new Date() } : {}),
+        boostedUntil,
       },
     });
 
@@ -218,6 +325,14 @@ export class AdminService {
         title: listing.title,
         listingUrl: this.mail.url(`/article/${listing.id}`),
       });
+      await this.notifications.notify(listing.sellerId, {
+        kind: 'LISTING_APPROVED',
+        title: 'Votre annonce est en ligne',
+        message: boostedUntil
+          ? `« ${listing.title} » est maintenant visible du catalogue, et mise en avant jusqu’au ${boostedUntil.toLocaleDateString('fr-FR')} grâce à votre mois offert.`
+          : `« ${listing.title} » est maintenant visible du catalogue.`,
+        link: `/article/${listing.id}`,
+      });
       return { message: `Annonce « ${listing.title} » publiée.` };
     }
 
@@ -225,6 +340,12 @@ export class AdminService {
       prenom: listing.seller.prenom,
       title: listing.title,
       reason: reason?.trim() || null,
+    });
+    await this.notifications.notify(listing.sellerId, {
+      kind: 'LISTING_REJECTED',
+      title: 'Votre annonce a besoin d’une retouche',
+      message: reason?.trim() || 'L’annonce ne respecte pas encore les usages du site. Relisez le message de l’administratrice.',
+      link: '/mes-annonces',
     });
     return { message: `Annonce « ${listing.title} » refusée.` };
   }
@@ -255,6 +376,12 @@ export class AdminService {
       prenom: listing.seller.prenom,
       title: listing.title,
       reason: reason.trim(),
+    });
+    await this.notifications.notify(listing.sellerId, {
+      kind: 'LISTING_REJECTED',
+      title: 'Votre annonce a été retirée',
+      message: `« ${listing.title} » a été retirée du catalogue : ${reason.trim()}`,
+      link: '/mes-annonces',
     });
 
     return { message: `Annonce « ${listing.title} » retirée du catalogue.` };
@@ -292,7 +419,7 @@ export class AdminService {
       email: user.email,
       role: user.role,
       status: user.status,
-      stripeConnectStatus: user.stripeConnectStatus,
+      stripeConnectStatus: this.stripeBypassConnect ? 'COMPLETE' : user.stripeConnectStatus,
       listingCount: user._count.listings,
       orderCount: user._count.ordersAsBuyer + user._count.ordersAsSeller,
       createdAt: user.createdAt.toISOString(),

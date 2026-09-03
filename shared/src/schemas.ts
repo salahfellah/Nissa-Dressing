@@ -11,15 +11,30 @@ import { isValidSize } from './sizes';
 
 const password = z
   .string()
-  .min(8, { message: 'Ton mot de passe doit faire au moins 8 caractères' })
+  .min(8, { message: 'Votre mot de passe doit faire au moins 8 caractères' })
   .max(128, { message: 'Mot de passe trop long' })
-  .regex(/[a-z]/, { message: 'Ajoute une minuscule à ton mot de passe' })
-  .regex(/[A-Z]/, { message: 'Ajoute une majuscule à ton mot de passe' })
-  .regex(/[0-9]/, { message: 'Ajoute un chiffre à ton mot de passe' });
+  .regex(/[a-z]/, { message: 'Ajoutez une minuscule à votre mot de passe' })
+  .regex(/[A-Z]/, { message: 'Ajoutez une majuscule à votre mot de passe' })
+  .regex(/[0-9]/, { message: 'Ajoutez un chiffre à votre mot de passe' });
+
+/**
+ * Confirmation du mot de passe — un contrôle de saisie, pas une donnée.
+ *
+ * Elle ne quitte jamais le navigateur : le serveur n'a que faire d'une seconde
+ * copie du mot de passe, et l'exiger dans le corps des requêtes casserait les
+ * clients existants. Les schémas d'API restent donc inchangés ; seuls les
+ * formulaires qui font *choisir* un mot de passe neuf ajoutent le champ, via
+ * les schémas « …FormSchema » plus bas.
+ */
+const passwordConfirmation = z
+  .string()
+  .min(1, { message: 'Confirmez votre mot de passe' });
+
+const MOTS_DE_PASSE_DIFFERENTS = 'Les deux mots de passe ne sont pas identiques';
 
 const email = z
   .string()
-  .min(1, { message: 'Nous avons besoin de ton adresse e-mail' })
+  .min(1, { message: 'Nous avons besoin de votre adresse e-mail' })
   .email({ message: 'Cette adresse e-mail ne semble pas valide' })
   .transform((v) => v.trim().toLowerCase());
 
@@ -40,11 +55,11 @@ const email = z
  */
 const pseudo = z
   .string()
-  .min(3, { message: 'Ton pseudo doit faire au moins 3 caractères' })
-  .max(30, { message: 'Ton pseudo est un peu long (30 caractères maximum)' })
+  .min(3, { message: 'Votre pseudo doit faire au moins 3 caractères' })
+  .max(30, { message: 'Votre pseudo est un peu long (30 caractères maximum)' })
   .regex(/^[\p{L}\p{Nd}][\p{L}\p{M}\p{Nd} ._-]*[\p{L}\p{Nd}]$/u, {
     message:
-      'Ton pseudo accepte les lettres, les chiffres, l’espace, le point, le tiret et l’underscore, et commence et finit par une lettre ou un chiffre',
+      'Votre pseudo accepte les lettres, les chiffres, l’espace, le point, le tiret et l’underscore, et commence et finit par une lettre ou un chiffre',
   });
 
 /**
@@ -67,18 +82,18 @@ const pseudoFacultatif = pseudo.optional();
  */
 const telephone = z
   .string()
-  .min(1, { message: 'Nous avons besoin de ton numéro pour te joindre' })
+  .min(1, { message: 'Nous avons besoin de votre numéro pour vous joindre' })
   .regex(/^[0-9+\s().-]{6,20}$/, { message: 'Ce numéro de téléphone ne semble pas valide' });
 
 // ————— Inscription & authentification (CDC §3.1) —————
 
 export const signupSchema = z.object({
-  /** Question d'éligibilité « Es-tu voilée ? » — le refus est terminal côté front. */
+  /** Question d'éligibilité « Êtes-vous voilée ? » — le refus est terminal côté front. */
   isVeiled: z.literal(true, {
     message: 'Nissa Dressing est réservée aux femmes musulmanes voilées',
   }),
-  prenom: z.string().min(1, { message: 'Ton prénom, s’il te plaît' }).max(60),
-  nom: z.string().min(1, { message: 'Ton nom, s’il te plaît' }).max(60),
+  prenom: z.string().min(1, { message: 'Votre prénom, s’il vous plaît' }).max(60),
+  nom: z.string().min(1, { message: 'Votre nom, s’il vous plaît' }).max(60),
   pseudo: pseudoFacultatif,
   email,
   phone: telephone,
@@ -89,9 +104,18 @@ export const signupSchema = z.object({
 });
 export type SignupInput = z.infer<typeof signupSchema>;
 
+/** Inscription telle qu'elle est saisie : le mot de passe y est confirmé. */
+export const signupFormSchema = signupSchema
+  .extend({ passwordConfirmation })
+  .refine((champs) => champs.password === champs.passwordConfirmation, {
+    path: ['passwordConfirmation'],
+    message: MOTS_DE_PASSE_DIFFERENTS,
+  });
+export type SignupFormInput = z.infer<typeof signupFormSchema>;
+
 export const loginSchema = z.object({
   email,
-  password: z.string().min(1, { message: 'N’oublie pas ton mot de passe' }),
+  password: z.string().min(1, { message: 'N’oubliez pas votre mot de passe' }),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
@@ -104,11 +128,20 @@ export const resetPasswordSchema = z.object({
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
+/** Réinitialisation telle qu'elle est saisie. */
+export const resetPasswordFormSchema = resetPasswordSchema
+  .extend({ passwordConfirmation })
+  .refine((champs) => champs.password === champs.passwordConfirmation, {
+    path: ['passwordConfirmation'],
+    message: MOTS_DE_PASSE_DIFFERENTS,
+  });
+export type ResetPasswordFormInput = z.infer<typeof resetPasswordFormSchema>;
+
 // ————— Espace personnel (CDC §3.2) —————
 
 export const addressSchema = z.object({
-  recipientName: z.string().min(1, { message: 'Indique le nom du destinataire' }).max(120),
-  line1: z.string().min(1, { message: 'Indique ton adresse' }).max(160),
+  recipientName: z.string().min(1, { message: 'Indiquez le nom du destinataire' }).max(120),
+  line1: z.string().min(1, { message: 'Indiquez votre adresse' }).max(160),
   // `nullish` et non `optional` : l'API renvoie `null` pour un champ non
   // renseigné (voir AddressDto). Le front réexpédie l'adresse telle qu'il l'a
   // reçue au moment de commander — le schéma doit donc accepter sa propre
@@ -116,13 +149,13 @@ export const addressSchema = z.object({
   line2: z.string().max(160).nullish(),
   postalCode: z
     .string()
-    .min(1, { message: 'Indique ton code postal' })
+    .min(1, { message: 'Indiquez votre code postal' })
     .regex(/^[0-9A-Za-z\s-]{3,10}$/, { message: 'Ce code postal ne semble pas valide' }),
-  city: z.string().min(1, { message: 'Indique ta ville' }).max(80),
+  city: z.string().min(1, { message: 'Indiquez votre ville' }).max(80),
   // Pas de `.default()` ici : il rendrait le champ optionnel en entrée et
   // désaccorderait les types d'entrée et de sortie côté react-hook-form.
   // La valeur par défaut « France » est posée dans les `defaultValues` du formulaire.
-  country: z.string().min(2, { message: 'Indique ton pays' }).max(60),
+  country: z.string().min(2, { message: 'Indiquez votre pays' }).max(60),
   phone: z
     .string()
     .regex(/^[0-9+\s().-]{6,20}$/, { message: 'Ce numéro de téléphone ne semble pas valide' })
@@ -132,17 +165,26 @@ export const addressSchema = z.object({
 export type AddressInput = z.infer<typeof addressSchema>;
 
 export const profileSchema = z.object({
-  prenom: z.string().min(1, { message: 'Ton prénom, s’il te plaît' }).max(60),
-  nom: z.string().min(1, { message: 'Ton nom, s’il te plaît' }).max(60),
+  prenom: z.string().min(1, { message: 'Votre prénom, s’il vous plaît' }).max(60),
+  nom: z.string().min(1, { message: 'Votre nom, s’il vous plaît' }).max(60),
   pseudo,
 });
 export type ProfileInput = z.infer<typeof profileSchema>;
 
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, { message: 'Indique ton mot de passe actuel' }),
+  currentPassword: z.string().min(1, { message: 'Indiquez votre mot de passe actuel' }),
   newPassword: password,
 });
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+/** Changement de mot de passe tel qu'il est saisi. */
+export const changePasswordFormSchema = changePasswordSchema
+  .extend({ newPasswordConfirmation: passwordConfirmation })
+  .refine((champs) => champs.newPassword === champs.newPasswordConfirmation, {
+    path: ['newPasswordConfirmation'],
+    message: MOTS_DE_PASSE_DIFFERENTS,
+  });
+export type ChangePasswordFormInput = z.infer<typeof changePasswordFormSchema>;
 
 // ————— Dépôt d'annonce (CDC §3.3) —————
 
@@ -150,14 +192,14 @@ export const listingSchema = z
   .object({
     title: z
       .string()
-      .min(3, { message: 'Donne un titre d’au moins 3 caractères' })
-      .max(80, { message: 'Ton titre est un peu long (80 caractères maximum)' }),
-    categoryId: z.string().min(1, { message: 'Choisis une catégorie' }),
-    subcategoryId: z.string().min(1, { message: 'Choisis une sous-catégorie' }),
-    size: z.string().min(1, { message: 'Choisis une taille' }),
-    material: z.string().min(1, { message: 'Indique la matière' }),
-    color: z.string().min(1, { message: 'Indique la couleur' }),
-    condition: z.enum(CONDITIONS as [string, ...string[]], { message: 'Indique l’état de ton article' }),
+      .min(3, { message: 'Donnez un titre d’au moins 3 caractères' })
+      .max(80, { message: 'Votre titre est un peu long (80 caractères maximum)' }),
+    categoryId: z.string().min(1, { message: 'Choisissez une catégorie' }),
+    subcategoryId: z.string().min(1, { message: 'Choisissez une sous-catégorie' }),
+    size: z.string().min(1, { message: 'Choisissez une taille' }),
+    material: z.string().min(1, { message: 'Indiquez la matière' }),
+    color: z.string().min(1, { message: 'Indiquez la couleur' }),
+    condition: z.enum(CONDITIONS as [string, ...string[]], { message: 'Indiquez l’état de votre article' }),
     /** null = « Sans marque » (CDC §3.3). */
     brand: z.string().max(60).nullable(),
     priceCents: z
@@ -167,13 +209,13 @@ export const listingSchema = z
       .max(500000, { message: 'Le prix maximum est de 5 000 €' }),
     photos: z
       .array(z.string().min(1))
-      .min(1, { message: 'Ajoute au moins une photo de ton article' })
+      .min(1, { message: 'Ajoutez au moins une photo de votre article' })
       .max(8, { message: '8 photos maximum, c’est déjà bien !' }),
-    packageFormat: z.enum(['PETIT', 'MOYEN', 'GRAND'], { message: 'Choisis un format de colis' }),
+    packageFormat: z.enum(['PETIT', 'MOYEN', 'GRAND'], { message: 'Choisissez un format de colis' }),
     description: z
       .string()
-      .min(10, { message: 'Décris ton article en quelques mots' })
-      .max(2000, { message: 'Ta description est un peu longue (2 000 caractères maximum)' }),
+      .min(10, { message: 'Décrivez votre article en quelques mots' })
+      .max(2000, { message: 'Votre description est un peu longue (2 000 caractères maximum)' }),
   })
   .superRefine((data, ctx) => {
     if (!isValidCategoryPair(data.categoryId, data.subcategoryId)) {
@@ -245,8 +287,8 @@ export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export const messageSchema = z.object({
   body: z
     .string()
-    .min(1, { message: 'Ton message est vide' })
-    .max(2000, { message: 'Ton message est un peu long (2 000 caractères maximum)' }),
+    .min(1, { message: 'Votre message est vide' })
+    .max(2000, { message: 'Votre message est un peu long (2 000 caractères maximum)' }),
 });
 export type MessageInput = z.infer<typeof messageSchema>;
 
@@ -254,15 +296,15 @@ export type MessageInput = z.infer<typeof messageSchema>;
 
 export const returnRequestSchema = z.object({
   reason: z.enum(['DAMAGED', 'NOT_AS_DESCRIBED', 'WRONG_ITEM', 'NOT_RECEIVED', 'OTHER'], {
-    message: 'Choisis un motif',
+    message: 'Choisissez un motif',
   }),
   description: z
     .string()
-    .min(10, { message: 'Décris le souci en quelques mots, cela nous aidera à t’aider' })
+    .min(10, { message: 'Décrivez le souci en quelques mots, cela nous aidera à vous aider' })
     .max(2000),
   photos: z
     .array(z.string().min(1))
-    .min(1, { message: 'Ajoute au moins une photo de ton article de l’article et du problème' })
+    .min(1, { message: 'Ajoutez au moins une photo de votre article de l’article et du problème' })
     .max(6, { message: '6 photos maximum' }),
 });
 export type ReturnRequestInput = z.infer<typeof returnRequestSchema>;
@@ -280,11 +322,11 @@ export const RETURN_REASON_LABELS: Record<ReturnRequestInput['reason'], string> 
 export const contactSchema = z.object({
   email,
   /** Pseudo ou kunya — CDC §3.8. */
-  pseudo: z.string().min(1, { message: 'Ton pseudo ou ta kunya, s’il te plaît' }).max(60),
+  pseudo: z.string().min(1, { message: 'Votre pseudo ou votre kunya, s’il vous plaît' }).max(60),
   message: z
     .string()
-    .min(10, { message: 'Explique-nous ton souci en quelques mots' })
-    .max(3000, { message: 'Ton message est un peu long' }),
+    .min(10, { message: 'Expliquez-nous votre souci en quelques mots' })
+    .max(3000, { message: 'Votre message est un peu long' }),
 });
 export type ContactInput = z.infer<typeof contactSchema>;
 

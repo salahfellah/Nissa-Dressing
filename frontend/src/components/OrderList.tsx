@@ -40,7 +40,7 @@ export default function OrderList({
     api
       .get<OrderDto[]>('/orders', { query: { role } })
       .then(setOrders)
-      .catch(() => setError('Tes commandes n’ont pas pu être chargées.'))
+      .catch(() => setError('Vos commandes n’ont pas pu être chargées.'))
       .finally(() => setIsLoading(false));
   }, [role]);
 

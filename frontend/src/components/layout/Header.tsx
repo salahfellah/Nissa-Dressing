@@ -1,11 +1,12 @@
 'use client';
 
 import { CATEGORIES } from '@nissa/shared';
-import { Heart, LogOut, MessageCircle, Plus, Search, Shield, User } from 'lucide-react';
+import { Bell, Heart, LogOut, MessageCircle, Plus, Search, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import NotificationsBell from '@/components/notifications/NotificationsBell';
 import { useAuth } from '@/lib/auth-context';
 import { Logo } from '../ui';
 
@@ -30,6 +31,18 @@ export default function Header() {
   };
 
   const handleLogout = () => void logout();
+
+  /**
+   * Qui est connectée ? La question se posait à chaque écran : l'en-tête ne
+   * montrait qu'une silhouette anonyme, identique d'un compte à l'autre. Le
+   * pseudo — le nom que les autres sœurs voient — et son initiale y répondent
+   * d'un coup d'œil, ce qui compte d'autant plus quand plusieurs comptes se
+   * partagent le même navigateur (l'administratrice et son compte de membre).
+   */
+  const pseudo = user?.pseudo?.trim() ?? '';
+  // `Array.from` et non `charAt` : une kunya arabe ou un prénom accentué ne
+  // doit pas être coupé au milieu d'un caractère.
+  const initiale = Array.from(pseudo)[0]?.toLocaleUpperCase() ?? '';
 
   const searchField = (className: string) => (
     <form onSubmit={submitSearch} className={`relative ${className}`} role="search">
@@ -79,6 +92,8 @@ export default function Header() {
                   <span className="text-[0.7rem]">Favoris</span>
                 </Link>
 
+                <NotificationsBell />
+
                 <Link
                   href="/messages"
                   className="hover:text-orDore transition-colors flex flex-col items-center gap-1 relative"
@@ -94,10 +109,22 @@ export default function Header() {
 
                 <Link
                   href="/compte"
-                  className="hover:text-orDore transition-colors flex flex-col items-center gap-1"
+                  title={pseudo ? `Connectée en tant que ${pseudo}` : undefined}
+                  className="hover:text-orDore transition-colors flex flex-col items-center gap-1 max-w-28"
                 >
-                  <User size={20} />
-                  <span className="text-[0.7rem]">Compte</span>
+                  <span
+                    aria-hidden
+                    className="w-5 h-5 rounded-full bg-orDore/15 text-orDore flex items-center justify-center text-[0.65rem] font-medium leading-none"
+                  >
+                    {initiale}
+                  </span>
+                  <span className="flex flex-col items-center leading-tight max-w-full">
+                    <span className="text-[0.7rem] max-w-full truncate">{pseudo || 'Compte'}</span>
+                    {/* Le pseudo dit qui est connectée, « Compte » dit où mène
+                        le lien : les deux se lisent d'un coup, et la rangée
+                        garde une destination nommée comme ses voisines. */}
+                    {pseudo && <span className="text-[0.6rem] text-taupe">Compte</span>}
+                  </span>
                 </Link>
 
                 {isAdmin && (
@@ -106,7 +133,7 @@ export default function Header() {
                     className="hover:text-orDore transition-colors flex flex-col items-center gap-1"
                   >
                     <Shield size={20} />
-                    <span className="text-[0.7rem]">Admin</span>
+                    <span className="text-[0.7rem] whitespace-nowrap">Tableau de bord Admin</span>
                   </Link>
                 )}
 
@@ -120,6 +147,20 @@ export default function Header() {
               </nav>
             )}
 
+            {/*
+              Sur mobile la barre du bas est déjà pleine et le panneau déroulant
+              n'a pas la place : un simple raccourci vers la page dédiée.
+            */}
+            {isMember && (
+              <Link
+                href="/notifications"
+                aria-label="Notifications"
+                className="md:hidden text-brunProfond hover:text-orDore transition-colors p-1"
+              >
+                <Bell size={20} />
+              </Link>
+            )}
+
             {isMember ? (
               <Link
                 href="/vendre"
@@ -131,12 +172,19 @@ export default function Header() {
               </Link>
             ) : (
               <div className="flex items-center gap-2 sm:gap-3">
-                <Link
-                  href="/connexion"
-                  className="text-xs sm:text-sm text-brunProfond hover:text-orDore transition-colors whitespace-nowrap"
-                >
-                  Connexion
-                </Link>
+                {user ? (
+                  <span className="inline-block text-xs sm:text-sm text-taupe truncate max-w-24 sm:max-w-40">
+                    <span className="hidden sm:inline">Connectée : </span>
+                    {pseudo}
+                  </span>
+                ) : (
+                  <Link
+                    href="/connexion"
+                    className="text-xs sm:text-sm text-brunProfond hover:text-orDore transition-colors whitespace-nowrap"
+                  >
+                    Connexion
+                  </Link>
+                )}
                 <Link
                   href="/inscription"
                   className="bg-orDore hover:bg-orDoreFonce text-white px-3 sm:px-4 py-2 rounded-sm text-xs sm:text-sm font-medium tracking-wide transition-colors whitespace-nowrap"

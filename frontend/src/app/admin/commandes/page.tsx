@@ -76,7 +76,7 @@ export default function AdminOrdersPage() {
       setError(
         erreur instanceof ApiError
           ? erreur.message
-          : 'Le reversement n’a pas pu être effectué. Réessaie dans un instant.',
+          : 'Le reversement n’a pas pu être effectué. Réessayez dans un instant.',
       );
     } finally {
       setPayingId(null);

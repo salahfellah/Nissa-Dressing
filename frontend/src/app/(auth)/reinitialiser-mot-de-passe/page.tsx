@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { resetPasswordSchema, type ResetPasswordInput } from '@nissa/shared';
+import { resetPasswordFormSchema, type ResetPasswordFormInput } from '@nissa/shared';
 import { Check } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -19,15 +19,16 @@ function ResetPasswordForm() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<ResetPasswordInput>({
-    resolver: zodResolver(resetPasswordSchema),
+  } = useForm<ResetPasswordFormInput>({
+    resolver: zodResolver(resetPasswordFormSchema),
     defaultValues: { token },
   });
 
-  const onSubmit = async (data: ResetPasswordInput) => {
+  const onSubmit = async (data: ResetPasswordFormInput) => {
     setError(null);
     try {
-      await api.post('/auth/reset-password', { ...data, token });
+      // La confirmation reste au navigateur : l'API ne reçoit que le mot de passe.
+      await api.post('/auth/reset-password', { token, password: data.password });
       setDone(true);
     } catch (exception) {
       setError(
@@ -40,7 +41,7 @@ function ResetPasswordForm() {
     return (
       <>
         <Alert variant="error" title="Lien invalide">
-          Ce lien de réinitialisation est incomplet. Refais une demande depuis la page de connexion.
+          Ce lien de réinitialisation est incomplet. Refaites une demande depuis la page de connexion.
         </Alert>
         <ButtonLink href="/mot-de-passe-oublie" variant="secondary">
           Refaire une demande
@@ -56,7 +57,7 @@ function ResetPasswordForm() {
           <Check size={26} />
         </div>
         <p className="text-sm text-brunProfond leading-relaxed mb-8">
-          Ton mot de passe a bien été mis à jour. Toutes tes autres sessions ont été fermées par
+          Votre mot de passe a bien été mis à jour. Toutes vos autres sessions ont été fermées par
           sécurité.
         </p>
         <ButtonLink href="/connexion">Me connecter</ButtonLink>
@@ -66,7 +67,7 @@ function ResetPasswordForm() {
 
   return (
     <>
-      <p className="text-sm text-taupe text-center mb-6">Choisis un nouveau mot de passe.</p>
+      <p className="text-sm text-taupe text-center mb-6">Choisissez un nouveau mot de passe.</p>
 
       {error && <Alert variant="error">{error}</Alert>}
 
@@ -79,6 +80,14 @@ function ResetPasswordForm() {
           required
           error={errors.password?.message}
           {...register('password')}
+        />
+        <Input
+          label="Confirmez le nouveau mot de passe"
+          type="password"
+          autoComplete="new-password"
+          required
+          error={errors.passwordConfirmation?.message}
+          {...register('passwordConfirmation')}
         />
         <Button type="submit" isLoading={isSubmitting} className="mt-2">
           Enregistrer

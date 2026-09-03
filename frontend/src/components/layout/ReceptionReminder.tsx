@@ -50,7 +50,7 @@ export default function ReceptionReminder() {
       ? null
       : jours === 0
         ? 'Dernier jour pour répondre.'
-        : `Il te reste ${jours} jour${jours > 1 ? 's' : ''} pour répondre.`;
+        : `Il vous reste ${jours} jour${jours > 1 ? 's' : ''} pour répondre.`;
 
   return (
     <div className="sticky top-0 z-40 bg-orDore text-brunProfond border-b border-brunProfond/20">
@@ -59,8 +59,8 @@ export default function ReceptionReminder() {
 
         <p className="text-sm font-medium flex-1 min-w-0">
           {plusieurs
-            ? `${aConfirmer.length} commandes attendent que tu confirmes leur réception.`
-            : `As-tu bien reçu ta commande ${premiere.reference} ?`}
+            ? `${aConfirmer.length} commandes attendent que vous confirmiez leur réception.`
+            : `Avez-vous bien reçu votre commande ${premiere.reference} ?`}
           {echeance && <span className="font-normal"> {echeance}</span>}
         </p>
 

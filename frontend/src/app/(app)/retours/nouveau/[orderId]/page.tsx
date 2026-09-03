@@ -44,7 +44,7 @@ function ReturnForm() {
       setSubmitted(true);
     } catch (exception) {
       setFormError(
-        exception instanceof ApiError ? exception.message : 'L’envoi de ta demande a échoué.',
+        exception instanceof ApiError ? exception.message : 'L’envoi de votre demande a échoué.',
       );
     }
   };
@@ -57,9 +57,9 @@ function ReturnForm() {
         </div>
         <h1 className="text-2xl font-playfair mb-4 text-brunProfond">Demande transmise</h1>
         <p className="text-sm text-brunProfond leading-relaxed mb-8">
-          Ta demande de retour a bien été reçue et sera examinée par l’administratrice, photos à
-          l’appui. Tu recevras une réponse par e-mail. En cas d’acceptation, un bordereau de retour
-          te sera fourni et tu seras remboursée dès la confirmation du retour.
+          Votre demande de retour a bien été reçue et sera examinée par l’administratrice, photos à
+          l’appui. Vous recevrez une réponse par e-mail. En cas d’acceptation, un bordereau de retour
+          vous sera fourni et vous serez remboursée dès la confirmation du retour.
         </p>
         <ButtonLink href={`/commande/${orderId}`}>Retour à ma commande</ButtonLink>
       </div>
@@ -81,7 +81,7 @@ function ReturnForm() {
           Demander un retour
         </h1>
         <p className="text-sm text-taupe">
-          Article endommagé ou non conforme à l’annonce ? Décris le problème le plus précisément
+          Article endommagé ou non conforme à l’annonce ? Décrivez le problème le plus précisément
           possible.
         </p>
       </header>
@@ -104,7 +104,7 @@ function ReturnForm() {
           <Textarea
             label="Description du problème"
             rows={6}
-            placeholder="Explique ce qui ne va pas : tache, accroc, taille différente, article non reçu…"
+            placeholder="Expliquez ce qui ne va pas : tache, accroc, taille différente, article non reçu…"
             hint="10 caractères minimum."
             required
             error={errors.description?.message}
@@ -133,7 +133,7 @@ function ReturnForm() {
         </Card>
 
         <Alert variant="info" title="Ce qu’il se passe ensuite">
-          L’administratrice examine ta demande. Si elle est acceptée, tu recevras un bordereau de
+          L’administratrice examine votre demande. Si elle est acceptée, vous recevrez un bordereau de
           retour à imprimer. Le remboursement est déclenché une fois le retour confirmé.
         </Alert>
 

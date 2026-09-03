@@ -65,7 +65,7 @@ export class AuthController {
         const path = issue.path.join('.') || '_';
         if (!fieldErrors[path]) fieldErrors[path] = issue.message;
       }
-      throw new BadRequestException({ message: 'Quelques champs demandent ton attention.', fieldErrors });
+      throw new BadRequestException({ message: 'Quelques champs demandent votre attention.', fieldErrors });
     }
 
     return this.auth.signup(parsed.data, audio);

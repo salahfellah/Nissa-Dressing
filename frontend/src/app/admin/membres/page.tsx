@@ -135,7 +135,7 @@ export default function AdminMembersPage() {
         <EmptyState
           icon={<Users size={36} />}
           title="Aucune membre trouvée"
-          description="Essaie une autre recherche ou change de filtre."
+          description="Essayez une autre recherche ou changez de filtre."
         />
       ) : (
         <DataTable

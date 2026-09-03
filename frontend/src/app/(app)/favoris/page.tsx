@@ -20,18 +20,18 @@ function FavoritesContent() {
     api
       .get<ListingDto[]>('/favorites')
       .then(setListings)
-      .catch(() => setError('Tes favoris n’ont pas pu être chargés.'))
+      .catch(() => setError('Vos favoris n’ont pas pu être chargés.'))
       .finally(() => setIsLoading(false));
   }, []);
 
   // Un cœur décoché retire l'article de la liste sans recharger la page.
   const visible = listings.filter((listing) => favoriteIds.has(listing.id));
 
-  if (isLoading) return <Spinner label="Chargement de tes favoris…" />;
+  if (isLoading) return <Spinner label="Chargement de vos favoris…" />;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-      <SectionTitle subtitle="Les pièces que tu as mises de côté.">Mes favoris</SectionTitle>
+      <SectionTitle subtitle="Les pièces que vous avez mises de côté.">Mes favoris</SectionTitle>
 
       {error && <Alert variant="error">{error}</Alert>}
 

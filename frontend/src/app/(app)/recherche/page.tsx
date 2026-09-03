@@ -71,7 +71,7 @@ function SearchContent() {
         await api.get<PaginatedDto<ListingDto>>('/listings', { query: toQuery(current, currentPage) }),
       );
     } catch {
-      setError('La recherche a échoué. Vérifie que l’API est démarrée.');
+      setError('La recherche a échoué. Vérifiez que l’API est démarrée.');
     } finally {
       setIsLoading(false);
     }
@@ -155,7 +155,7 @@ function SearchContent() {
             <EmptyState
               icon={<PackageSearch size={36} />}
               title="Aucun article ne correspond"
-              description="Essaie d’élargir tes critères : une autre taille, une autre couleur, ou une fourchette de prix plus large."
+              description="Essayez d’élargir vos critères : une autre taille, une autre couleur, ou une fourchette de prix plus large."
               action={
                 <Button variant="secondary" fullWidth={false} onClick={reset}>
                   Réinitialiser les filtres

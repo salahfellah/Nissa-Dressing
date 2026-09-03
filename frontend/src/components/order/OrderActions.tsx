@@ -49,7 +49,7 @@ export default function OrderActions({
       setError(
         exception instanceof ApiError
           ? exception.message
-          : 'L’action n’a pas pu aboutir. Réessaie dans un instant.',
+          : 'L’action n’a pas pu aboutir. Réessayez dans un instant.',
       );
     } finally {
       setIsBusy(false);
@@ -58,7 +58,7 @@ export default function OrderActions({
 
   const confirmReception = () => {
     const confirmed = window.confirm(
-      'Confirmes-tu avoir bien reçu ton colis ? Le paiement sera aussitôt versé à la vendeuse — cette action ne peut pas être annulée.',
+      'Confirmez-vous avoir bien reçu votre colis ? Le paiement sera aussitôt versé à la vendeuse — cette action ne peut pas être annulée.',
     );
     if (confirmed) void run(`/orders/${order.id}/reception`, 'Réception confirmée. Le paiement a été versé à la vendeuse, baraka Allahu fiki.');
   };
@@ -106,9 +106,9 @@ export default function OrderActions({
               <span>
                 {joursRestants === 0
                   ? 'Dernier jour pour répondre.'
-                  : `Il te reste ${joursRestants} jour${joursRestants > 1 ? 's' : ''} pour répondre.`}{' '}
-                Sans réponse de ta part, la commande sera considérée comme bien reçue et conforme,
-                et tu ne pourras plus signaler de souci.
+                  : `Il vous reste ${joursRestants} jour${joursRestants > 1 ? 's' : ''} pour répondre.`}{' '}
+                Sans réponse de votre part, la commande sera considérée comme bien reçue et conforme,
+                et vous ne pourrez plus signaler de souci.
               </span>
             </p>
           )}
@@ -119,7 +119,7 @@ export default function OrderActions({
           </Button>
           <p className="flex items-start gap-2 text-xs text-taupe leading-relaxed">
             <ShieldCheck size={14} className="shrink-0 mt-0.5 text-orDore" />
-            Ton paiement est gardé en sécurité jusque-là. Prends le temps de vérifier ton article
+            Votre paiement est gardé en sécurité jusque-là. Prenez le temps de vérifier votre article
             avant de confirmer — c’est ce geste qui permet le reversement à la vendeuse.
           </p>
         </>
@@ -128,12 +128,12 @@ export default function OrderActions({
       {isBuyer && !order.hasReturnRequest && ['PAID', 'SHIPPED', 'RECEIVED'].includes(order.status) && (
         <ButtonLink href={`/retours/nouveau/${order.id}`} variant="ghost">
           <Undo2 size={16} />
-          Un souci avec ton article ?
+          Un souci avec votre article ?
         </ButtonLink>
       )}
 
       {order.hasReturnRequest && (
-        <Alert variant="info" title="Ta demande est entre de bonnes mains">
+        <Alert variant="info" title="Votre demande est entre de bonnes mains">
           L’administratrice l’examine avec attention.{' '}
           <Link href="/compte" className="underline font-semibold">
             Suivre ma demande

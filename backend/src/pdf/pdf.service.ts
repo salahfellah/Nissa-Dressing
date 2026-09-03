@@ -139,20 +139,20 @@ export class PdfService {
       .fillColor(BROWN)
       .fontSize(9)
       .font('Helvetica-Bold')
-      .text(data.isReturn ? 'COMMENT RENVOYER TON COLIS' : 'COMMENT ENVOYER TON COLIS', 56, y + 12);
+      .text(data.isReturn ? 'COMMENT RENVOYER VOTRE COLIS' : 'COMMENT ENVOYER VOTRE COLIS', 56, y + 12);
 
     const steps = data.isReturn
       ? [
-          '1. Remets l’article dans son emballage d’origine, avec toutes ses étiquettes.',
-          '2. Imprime ce bordereau et colle-le bien à plat sur le colis.',
-          '3. Dépose le colis au bureau de poste ou en point relais.',
-          '4. Ton remboursement est déclenché dès que le retour est confirmé.',
+          '1. Remettez l’article dans son emballage d’origine, avec toutes ses étiquettes.',
+          '2. Imprimez ce bordereau et collez-le bien à plat sur le colis.',
+          '3. Déposez le colis au bureau de poste ou en point relais.',
+          '4. Votre remboursement est déclenché dès que le retour est confirmé.',
         ]
       : [
-          '1. Emballe soigneusement l’article.',
-          '2. Imprime ce bordereau et colle-le bien à plat sur le colis.',
-          '3. Dépose le colis au bureau de poste ou en point relais.',
-          '4. Indique « Colis expédié » sur le site pour prévenir l’acheteuse.',
+          '1. Emballez soigneusement l’article.',
+          '2. Imprimez ce bordereau et collez-le bien à plat sur le colis.',
+          '3. Déposez le colis au bureau de poste ou en point relais.',
+          '4. Indiquez « Colis expédié » sur le site pour prévenir l’acheteuse.',
         ];
 
     doc.fontSize(8.5).font('Helvetica');

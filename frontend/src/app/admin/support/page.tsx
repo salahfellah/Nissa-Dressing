@@ -162,7 +162,7 @@ export default function AdminSupportPage() {
 
                 <div className="flex flex-wrap gap-3">
                   <a
-                    href={`mailto:${request.email}?subject=${encodeURIComponent('Nissa Dressing — ta demande')}`}
+                    href={`mailto:${request.email}?subject=${encodeURIComponent('Nissa Dressing — votre demande')}`}
                     className="text-xs text-orDore underline inline-flex items-center gap-1"
                   >
                     <Mail size={12} />

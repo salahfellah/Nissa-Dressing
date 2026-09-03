@@ -18,11 +18,11 @@ function ConversationsContent() {
     api
       .get<ConversationDto[]>('/messages')
       .then(setConversations)
-      .catch(() => setError('Tes conversations n’ont pas pu être chargées.'))
+      .catch(() => setError('Vos conversations n’ont pas pu être chargées.'))
       .finally(() => setIsLoading(false));
   }, []);
 
-  if (isLoading) return <Spinner label="Chargement de tes messages…" />;
+  if (isLoading) return <Spinner label="Chargement de vos messages…" />;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 md:py-12">

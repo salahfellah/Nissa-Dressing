@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { signupSchema, type SignupInput } from '@nissa/shared';
+import { signupFormSchema, type SignupFormInput } from '@nissa/shared';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -28,8 +28,8 @@ export default function SignupPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<SignupInput>({
-    resolver: zodResolver(signupSchema),
+  const form = useForm<SignupFormInput>({
+    resolver: zodResolver(signupFormSchema),
     defaultValues: { isVeiled: true },
   });
 
@@ -63,13 +63,13 @@ export default function SignupPage() {
       if (exception instanceof ApiError) {
         const fields = Object.entries(exception.fieldErrors);
         for (const [field, message] of fields) {
-          form.setError(field as keyof SignupInput, { message });
+          form.setError(field as keyof SignupFormInput, { message });
         }
         // Les erreurs portent sur le formulaire : on y ramène la candidate.
         if (fields.length) setStep('identity');
         setFormError(exception.message);
       } else {
-        setFormError('Ta candidature n’a pas pu être envoyée. Réessaie dans un instant.');
+        setFormError('Votre candidature n’a pas pu être envoyée. Réessayez dans un instant.');
       }
     } finally {
       setIsSubmitting(false);

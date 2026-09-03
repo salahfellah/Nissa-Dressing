@@ -18,6 +18,7 @@ import { UploadsService } from '../uploads/uploads.service';
 import { TokenService } from './token.service';
 import { secureToken } from '../common/utils/reference';
 import { iso } from '../common/utils/dates';
+import type { AppConfig } from '../config/configuration';
 
 const BCRYPT_ROUNDS = 12;
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 heure
@@ -26,6 +27,7 @@ const RESET_TTL_MS = 60 * 60 * 1000; // 1 heure
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly adminEmail: string;
+  private readonly stripeBypassConnect: boolean;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -36,6 +38,8 @@ export class AuthService {
     config: ConfigService,
   ) {
     this.adminEmail = config.getOrThrow<{ email: string }>('admin').email;
+    this.stripeBypassConnect =
+      config.getOrThrow<AppConfig['stripe']>('stripe').bypassConnect;
   }
 
   /**
@@ -48,7 +52,7 @@ export class AuthService {
   async signup(input: SignupInput, audio: Express.Multer.File): Promise<{ message: string }> {
     if (!audio) {
       throw new BadRequestException(
-        'L’enregistrement audio est nécessaire pour déposer ta candidature.',
+        'L’enregistrement audio est nécessaire pour déposer votre candidature.',
       );
     }
 
@@ -112,7 +116,7 @@ export class AuthService {
 
     return {
       message:
-        'Ta demande d’inscription a bien été transmise. Un e-mail te sera envoyé sous peu ; en cas d’acceptation, une participation de 5 € te sera demandée.',
+        'Votre demande d’inscription a bien été transmise. Un e-mail vous sera envoyé sous peu ; en cas d’acceptation, une participation de 5 € vous sera demandée.',
     };
   }
 
@@ -147,8 +151,8 @@ export class AuthService {
     }
 
     throw new ConflictException({
-      message: 'Nous n’arrivons pas à te proposer un pseudo. Choisis-en un, s’il te plaît.',
-      fieldErrors: { pseudo: 'Choisis un pseudo, s’il te plaît.' },
+      message: 'Nous n’arrivons pas à vous proposer un pseudo. Choisissez-en un, s’il vous plaît.',
+      fieldErrors: { pseudo: 'Choisissez un pseudo, s’il vous plaît.' },
     });
   }
 
@@ -167,12 +171,12 @@ export class AuthService {
       : await bcrypt.compare(input.password, '$2a$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinv');
 
     if (!user || !matches) {
-      throw new UnauthorizedException('Cet e-mail ou ce mot de passe ne correspond pas. Réessaie doucement.');
+      throw new UnauthorizedException('Cet e-mail ou ce mot de passe ne correspond pas. Réessayez doucement.');
     }
 
     if (user.status === 'REJECTED') {
       throw new UnauthorizedException({
-        message: 'Ta demande d’inscription n’a pas pu être retenue. Nous en sommes navrées.',
+        message: 'Votre demande d’inscription n’a pas pu être retenue. Nous en sommes navrées.',
         memberStatus: user.status,
       });
     }
@@ -206,7 +210,7 @@ export class AuthService {
       pseudo: user.pseudo,
       role: user.role,
       status: user.status,
-      stripeConnectStatus: user.stripeConnectStatus,
+      stripeConnectStatus: this.stripeBypassConnect ? 'COMPLETE' : user.stripeConnectStatus,
       address: hasAddress
         ? {
             recipientName: user.recipientName ?? `${user.prenom} ${user.nom}`,
@@ -262,7 +266,7 @@ export class AuthService {
 
     if (!reset || reset.usedAt || reset.expiresAt < new Date()) {
       throw new BadRequestException(
-        'Ce lien n’est plus valable. Refais simplement une demande, nous t’en renverrons un.',
+        'Ce lien n’est plus valable. Refaites simplement une demande, nous vous en renverrons un.',
       );
     }
 
@@ -280,7 +284,7 @@ export class AuthService {
     // Toute session ouverte avec l'ancien mot de passe est invalidée.
     await this.tokens.revokeAllForUser(reset.userId);
 
-    return { message: 'Ton mot de passe a été mis à jour. Tu peux te connecter.' };
+    return { message: 'Votre mot de passe a été mis à jour. Vous pouvez vous connecter.' };
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {

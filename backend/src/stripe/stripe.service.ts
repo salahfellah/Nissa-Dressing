@@ -4,6 +4,23 @@ import { randomBytes } from 'node:crypto';
 import Stripe from 'stripe';
 import type { AppConfig } from '../config/configuration';
 
+/**
+ * Stripe « Adaptive Pricing » propose à l'acheteuse de régler dans sa devise
+ * locale — le dinar algérien par exemple — en convertissant une session
+ * pourtant libellée en euros.
+ *
+ * Tout le site raisonne en euros : les prix affichés, la commission, le
+ * séquestre et le reversement à la vendeuse. Laisser Stripe convertir ferait
+ * payer un montant qui ne correspond à aucun de ces chiffres, et la sœur ne
+ * saurait plus ce qu'elle paie réellement.
+ *
+ * Le paramètre n'existe pas encore dans les types du SDK (22.5.0) : le cast est
+ * isolé ici plutôt que répété à chaque passage en caisse.
+ */
+const EN_EUROS_UNIQUEMENT = {
+  adaptive_pricing: { enabled: false },
+} as unknown as Partial<Stripe.Checkout.SessionCreateParams>;
+
 export interface CheckoutSession {
   id: string;
   url: string;
@@ -49,17 +66,31 @@ export class StripeService {
 
     if (this.cfg.mode === 'live') {
       this.stripe = new Stripe(this.cfg.secretKey);
+      if (this.cfg.bypassConnect) {
+        this.logger.warn(
+          'STRIPE_BYPASS_CONNECT=true : Stripe Checkout reste reel, mais Stripe Connect et les reversements vendeuse sont simules.',
+        );
+      }
       this.logger.log('Stripe actif (clé secrète détectée)');
     } else {
       this.stripe = null;
+      // Deux chemins mènent au mode simulé : l'absence de clé, ou un
+      // STRIPE_MODE=mock délibéré alors qu'une clé est renseignée. Le dire
+      // évite de chercher une clé manquante qui est en fait bien là.
       this.logger.warn(
-        'STRIPE_SECRET_KEY absente : paiements simulés (mode mock). Le parcours complet reste testable.',
+        this.cfg.secretKey
+          ? 'STRIPE_MODE=mock : paiements simulés malgré la clé Stripe présente. Le parcours complet reste testable.'
+          : 'STRIPE_SECRET_KEY absente : paiements simulés (mode mock). Le parcours complet reste testable.',
       );
     }
   }
 
   get isMock(): boolean {
     return this.stripe === null;
+  }
+
+  get bypassConnect(): boolean {
+    return this.cfg.bypassConnect;
   }
 
   private mockId(prefix: string): string {
@@ -90,6 +121,7 @@ export class StripeService {
     }
 
     const session = await this.stripe.checkout.sessions.create({
+      ...EN_EUROS_UNIQUEMENT,
       mode: 'payment',
       customer_email: params.email,
       client_reference_id: params.userId,
@@ -118,17 +150,32 @@ export class StripeService {
 
   /** Crée le compte connecté de la vendeuse. Aucune donnée bancaire ne transite par l'API. */
   async createConnectedAccount(params: { email: string; userId: string }): Promise<string> {
-    if (!this.stripe) return this.mockId('acct');
+    if (!this.stripe || this.bypassConnect) return this.mockId('acct');
 
-    const account = await this.stripe.accounts.create({
-      type: 'express',
-      email: params.email,
-      country: 'FR',
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
+    const account = await this.stripe.v2.core.accounts.create({
+      contact_email: params.email,
+      display_name: 'Nissa Dressing',
+      dashboard: 'express',
+      identity: {
+        country: 'FR',
+        entity_type: 'individual',
       },
-      business_type: 'individual',
+      defaults: {
+        responsibilities: {
+          fees_collector: 'application',
+          losses_collector: 'application',
+        },
+      },
+      configuration: {
+        recipient: {
+          capabilities: {
+            stripe_balance: {
+              stripe_transfers: { requested: true },
+            },
+          },
+        },
+      },
+      include: ['configuration.recipient', 'identity', 'requirements'],
       metadata: { userId: params.userId },
     });
 
@@ -139,12 +186,20 @@ export class StripeService {
     if (!this.stripe) {
       return this.mockUrl('connect', accountId, 0);
     }
+    if (this.bypassConnect || accountId.startsWith('acct_mock_')) {
+      return `${this.webOrigin}/compte?stripe=test-ready`;
+    }
 
-    const link = await this.stripe.accountLinks.create({
+    const link = await this.stripe.v2.core.accountLinks.create({
       account: accountId,
-      type: 'account_onboarding',
-      refresh_url: `${this.webOrigin}/configuration-compte?refresh=1`,
-      return_url: `${this.webOrigin}/configuration-compte?retour=1`,
+      use_case: {
+        type: 'account_onboarding',
+        account_onboarding: {
+          configurations: ['recipient'],
+          refresh_url: `${this.webOrigin}/configuration-compte?refresh=1`,
+          return_url: `${this.webOrigin}/configuration-compte?retour=1`,
+        },
+      },
     });
 
     return link.url;
@@ -152,14 +207,30 @@ export class StripeService {
 
   /** Le compte connecté peut-il recevoir des transferts ? */
   async isAccountReady(accountId: string): Promise<boolean> {
-    if (!this.stripe) return true;
+    if (!this.stripe || this.bypassConnect || accountId.startsWith('acct_mock_')) return true;
 
-    const account = await this.stripe.accounts.retrieve(accountId);
-    return Boolean(account.charges_enabled && account.payouts_enabled && account.details_submitted);
+    try {
+      const account = await this.stripe.v2.core.accounts.retrieve(accountId, {
+        include: ['configuration.recipient', 'requirements'],
+      });
+      return (
+        account.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status ===
+        'active'
+      );
+    } catch (error) {
+      const stripeError = error as Error & { code?: string; raw?: { code?: string } };
+      const code = stripeError.code ?? stripeError.raw?.code;
+      if (code !== 'v1_account_instead_of_v2_account') {
+        throw error;
+      }
+
+      const account = await this.stripe.accounts.retrieve(accountId);
+      return Boolean(account.charges_enabled && account.payouts_enabled && account.details_submitted);
+    }
   }
 
   async createLoginLink(accountId: string): Promise<string | null> {
-    if (!this.stripe) return null;
+    if (!this.stripe || this.bypassConnect || accountId.startsWith('acct_mock_')) return null;
     const link = await this.stripe.accounts.createLoginLink(accountId);
     return link.url;
   }
@@ -181,6 +252,7 @@ export class StripeService {
     }
 
     const session = await this.stripe.checkout.sessions.create({
+      ...EN_EUROS_UNIQUEMENT,
       mode: 'payment',
       customer_email: params.email,
       client_reference_id: params.orderId,
@@ -203,7 +275,7 @@ export class StripeService {
         metadata: { kind: 'order', orderId: params.orderId },
       },
       metadata: { kind: 'order', orderId: params.orderId },
-      success_url: `${this.webOrigin}/commande/${params.orderId}?paiement=ok`,
+      success_url: `${this.webOrigin}/commande/${params.orderId}?paiement=ok&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.webOrigin}/commande/${params.orderId}?paiement=annule`,
     });
 
@@ -256,7 +328,7 @@ export class StripeService {
     reference: string;
     chargeId?: string | null;
   }): Promise<string> {
-    if (!this.stripe) return this.mockId('tr');
+    if (!this.stripe || this.bypassConnect) return this.mockId('tr');
 
     const transfer = await this.stripe.transfers.create({
       amount: params.amountCents,
@@ -298,6 +370,7 @@ export class StripeService {
     }
 
     const session = await this.stripe.checkout.sessions.create({
+      ...EN_EUROS_UNIQUEMENT,
       mode: 'subscription',
       customer_email: params.email,
       client_reference_id: params.listingId,
@@ -315,7 +388,7 @@ export class StripeService {
             },
           ],
       metadata: { kind: 'boost', listingId: params.listingId },
-      success_url: `${this.webOrigin}/mes-annonces?boost=ok`,
+      success_url: `${this.webOrigin}/mes-annonces?boost=ok&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.webOrigin}/mes-annonces?boost=annule`,
     });
 
@@ -339,5 +412,34 @@ export class StripeService {
   async retrieveSession(sessionId: string): Promise<Stripe.Checkout.Session | null> {
     if (!this.stripe) return null;
     return this.stripe.checkout.sessions.retrieve(sessionId);
+  }
+
+  /**
+   * Relit une session Checkout et ne la renvoie que si Stripe la donne pour réglée.
+   *
+   * Filet de rattrapage du webhook : au retour du navigateur, l'API interroge
+   * elle-même Stripe plutôt que de croire l'URL. Le webhook reste la voie
+   * normale — il arrive même si l'acheteuse ferme l'onglet — mais il peut
+   * tarder, échouer, ou n'être relayé par aucune CLI en développement, et le
+   * paiement resterait alors éternellement « en attente ».
+   *
+   * `null` couvre indifféremment la session inconnue, impayée ou illisible :
+   * l'appelant n'a rien à confirmer dans ces trois cas.
+   */
+  async retrievePaidSession(sessionId: string): Promise<Stripe.Checkout.Session | null> {
+    if (!this.stripe) return null;
+    if (!sessionId.startsWith('cs_')) return null;
+
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await this.stripe.checkout.sessions.retrieve(sessionId);
+    } catch (error) {
+      this.logger.warn(`Session Checkout illisible (${sessionId}) : ${(error as Error).message}`);
+      return null;
+    }
+
+    // `payment_status` vaut aussi `paid` pour un abonnement dont la première
+    // facture est réglée : le boost mensuel emprunte donc le même chemin.
+    return session.payment_status === 'paid' ? session : null;
   }
 }

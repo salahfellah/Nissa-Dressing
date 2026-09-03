@@ -35,7 +35,7 @@ export default function ProfileForm() {
       setError(
         exception instanceof ApiError
           ? exception.message
-          : 'Tes informations n’ont pas pu être enregistrées.',
+          : 'Vos informations n’ont pas pu être enregistrées.',
       );
     }
   };
@@ -46,7 +46,7 @@ export default function ProfileForm() {
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       {saved && (
         <Alert variant="success" onClose={() => setSaved(false)}>
-          Tes informations sont à jour, baraka Allahu fiki.
+          Vos informations sont à jour, baraka Allahu fiki.
         </Alert>
       )}
       {error && <Alert variant="error">{error}</Alert>}
@@ -62,7 +62,7 @@ export default function ProfileForm() {
 
       <Input
         label="Pseudo"
-        hint="C’est ce nom que les autres sœurs verront sur tes annonces."
+        hint="C’est ce nom que les autres sœurs verront sur vos annonces."
         required
         error={errors.pseudo?.message}
         {...register('pseudo')}

@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { RequireAdmin } from '@/components/guards';
 import { Logo } from '@/components/ui';
+import { useAuth } from '@/lib/auth-context';
 
 const NAV = [
   { href: '/admin', label: 'Tableau de bord', icon: BarChart3, exact: true },
@@ -29,6 +30,7 @@ const NAV = [
 /** Back-office — CDC §3.9. Chrome distinct du site public. */
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   return (
     <RequireAdmin>
@@ -43,9 +45,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 Administration
               </span>
             </div>
-            <Link href="/catalogue" className="text-xs underline hover:text-orDore">
-              Retour au site
-            </Link>
+            <div className="flex items-center gap-4 min-w-0">
+              {/* Le back-office et le site se ressemblent assez pour qu'on oublie
+                  sous quel compte on tranche : le pseudo le rappelle. */}
+              {user && (
+                <span className="inline-block text-xs text-beigeClair/70 truncate max-w-40">
+                  Connectée : <span className="text-beigeClair">{user.pseudo}</span>
+                </span>
+              )}
+              <Link
+                href="/catalogue"
+                className="text-xs underline hover:text-orDore whitespace-nowrap"
+              >
+                Retour au site
+              </Link>
+            </div>
           </div>
 
           <nav className="border-t border-beigeClair/10" aria-label="Navigation du back-office">

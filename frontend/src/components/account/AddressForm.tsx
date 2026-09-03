@@ -18,9 +18,20 @@ import { useAuth } from '@/lib/auth-context';
 export default function AddressForm({
   submitLabel,
   onSaved,
+  onSubmitValues,
+  startEmpty = false,
 }: {
   submitLabel?: string;
   onSaved?: (me: MeDto) => void;
+  /**
+   * Quand il est fourni, le formulaire n'enregistre rien sur le compte : il
+   * remonte simplement les valeurs saisies. C'est le cas d'une livraison
+   * ponctuelle ailleurs — l'adresse habituelle de la sœur ne doit pas être
+   * remplacée parce qu'elle fait livrer une fois chez sa mère.
+   */
+  onSubmitValues?: (adresse: AddressInput) => void | Promise<void>;
+  /** Part d'un formulaire vierge plutôt que de l'adresse du compte. */
+  startEmpty?: boolean;
 }) {
   const { user, setUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +49,20 @@ export default function AddressForm({
   // Pré-remplit avec l'adresse connue, et propose le nom de la membre par défaut.
   useEffect(() => {
     if (!user) return;
+    if (startEmpty) {
+      // Seuls le destinataire et le pays sont proposés : recopier l'adresse du
+      // compte obligerait à tout effacer pour livrer ailleurs.
+      reset({
+        recipientName: `${user.prenom} ${user.nom}`,
+        line1: '',
+        line2: '',
+        postalCode: '',
+        city: '',
+        country: 'France',
+        phone: user.address?.phone ?? '',
+      });
+      return;
+    }
     reset({
       recipientName: user.address?.recipientName ?? `${user.prenom} ${user.nom}`,
       line1: user.address?.line1 ?? '',
@@ -47,10 +72,14 @@ export default function AddressForm({
       country: user.address?.country ?? 'France',
       phone: user.address?.phone ?? '',
     });
-  }, [user, reset]);
+  }, [user, reset, startEmpty]);
 
   const onSubmit = async (data: AddressInput) => {
     setError(null);
+    if (onSubmitValues) {
+      await onSubmitValues(data);
+      return;
+    }
     try {
       const me = await api.put<MeDto>('/account/address', data);
       setUser(me);
@@ -59,7 +88,7 @@ export default function AddressForm({
       setError(
         exception instanceof ApiError
           ? exception.message
-          : 'Ton adresse n’a pas pu être enregistrée. Réessaie dans un instant.',
+          : 'Votre adresse n’a pas pu être enregistrée. Réessayez dans un instant.',
       );
     }
   };

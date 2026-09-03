@@ -29,4 +29,4 @@ Photo portée hors catégorie autorisée, représentation d'âme, article non co
 
 ## 6. Suite d'un refus
 
-Un e-mail t'est adressé avec le motif du refus. L'annonce peut être corrigée puis soumise à nouveau depuis l'espace « Mes annonces ».
+Un e-mail vous est adressé avec le motif du refus. L'annonce peut être corrigée puis soumise à nouveau depuis l'espace « Mes annonces ».

@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import type { ConversationDto, MessageDto } from '@nissa/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { UploadsService } from '../uploads/uploads.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /**
  * Messagerie liée à la commande — CDC §2.2.
@@ -14,6 +15,7 @@ export class MessagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploads: UploadsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private async requireParticipant(orderId: string, userId: string) {
@@ -28,7 +30,7 @@ export class MessagesService {
 
     if (!order) throw new NotFoundException('Nous ne retrouvons pas cette commande.');
     if (order.buyerId !== userId && order.sellerId !== userId) {
-      throw new ForbiddenException('Cette conversation ne t’est pas destinée.');
+      throw new ForbiddenException('Cette conversation ne vous est pas destinée.');
     }
 
     return order;
@@ -108,7 +110,7 @@ export class MessagesService {
   }
 
   async send(orderId: string, userId: string, body: string): Promise<MessageDto> {
-    await this.requireParticipant(orderId, userId);
+    const order = await this.requireParticipant(orderId, userId);
 
     const message = await this.prisma.message.create({
       data: { orderId, senderId: userId, body: body.trim() },
@@ -117,6 +119,16 @@ export class MessagesService {
 
     // Fait remonter la conversation en tête de liste.
     await this.prisma.order.update({ where: { id: orderId }, data: { updatedAt: new Date() } });
+
+    // La sœur destinataire est prévenue dans le site : elle verra la pastille
+    // et le message complet dans sa conversation.
+    const otherPartyId = order.buyerId === userId ? order.sellerId : order.buyerId;
+    await this.notifications.notify(otherPartyId, {
+      kind: 'MESSAGE',
+      title: `Nouveau message de ${message.sender.pseudo}`,
+      message: body.trim().slice(0, 160),
+      link: `/messages/${orderId}`,
+    });
 
     return {
       id: message.id,

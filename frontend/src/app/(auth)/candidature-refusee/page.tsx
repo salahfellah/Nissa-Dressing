@@ -17,8 +17,8 @@ export default function ApplicationRejectedPage() {
         </div>
 
         <p className="text-sm text-brunProfond leading-relaxed mb-8">
-          Après examen, ta demande d’inscription n’a pas pu être retenue par l’administratrice.
-          Nous te prions de bien vouloir nous en excuser, et te souhaitons le meilleur.
+          Après examen, votre demande d’inscription n’a pas pu être retenue par l’administratrice.
+          Nous vous prions de bien vouloir nous en excuser, et vous souhaitons le meilleur.
         </p>
 
         <Button variant="secondary" onClick={() => void logout()}>

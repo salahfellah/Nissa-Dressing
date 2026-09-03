@@ -20,6 +20,7 @@ import { SettingsService } from '../settings/settings.service';
 import { UploadsService } from '../uploads/uploads.service';
 import { MailService } from '../mail/mail.service';
 import { StripeService } from '../stripe/stripe.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { addDays } from '../common/utils/dates';
 import { toListingDto } from './listings.mapper';
 
@@ -33,6 +34,7 @@ export class ListingsService {
     private readonly uploads: UploadsService,
     private readonly mail: MailService,
     private readonly stripe: StripeService,
+    private readonly notifications: NotificationsService,
     config: ConfigService,
   ) {
     this.adminEmail = config.getOrThrow<{ email: string }>('admin').email;
@@ -210,16 +212,19 @@ export class ListingsService {
 
     // Le reversement passe par Stripe Connect : sans compte connecté opérationnel,
     // la vente ne pourrait pas être payée (CDC §3.2).
-    if (seller.stripeConnectStatus !== 'COMPLETE') {
+    if (!this.stripe.bypassConnect && seller.stripeConnectStatus !== 'COMPLETE') {
+      const stripeMessage =
+        seller.stripeConnectStatus === 'PENDING'
+          ? 'Terminez le formulaire Stripe, puis actualisez votre compte : c’est ce qui vous permettra d’être payée de vos ventes.'
+          : 'Configurez d’abord vos coordonnées bancaires via Stripe : c’est ce qui vous permettra d’être payée de vos ventes.';
       throw new BadRequestException({
-        message:
-          'Configure d’abord tes coordonnées bancaires via Stripe : c’est ce qui te permettra d’être payée de tes ventes.',
+        message: stripeMessage,
         step: 'stripe_connect',
       });
     }
     if (!seller.addressLine1 || !seller.postalCode || !seller.city) {
       throw new BadRequestException({
-        message: 'Renseigne ton adresse postale : elle figure sur le bordereau d’envoi.',
+        message: 'Renseignez votre adresse postale : elle figure sur le bordereau d’envoi.',
         step: 'address',
       });
     }
@@ -254,6 +259,13 @@ export class ListingsService {
       adminUrl: this.mail.url('/admin/annonces'),
     });
 
+    await this.notifications.notify(sellerId, {
+      kind: 'LISTING_SUBMITTED',
+      title: 'Annonce envoyée en validation',
+      message: `« ${listing.title} » est entre les mains de l’administratrice. Vous serez prévenue dès qu’elle paraîtra.`,
+      link: '/mes-annonces',
+    });
+
     const settings = await this.settings.get();
     return toListingDto(listing, { uploads: this.uploads, settings });
   }
@@ -263,7 +275,7 @@ export class ListingsService {
     const existing = await this.prisma.listing.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Nous ne retrouvons pas cette annonce.');
     if (existing.sellerId !== sellerId) {
-      throw new ForbiddenException('Cette annonce n’est pas la tienne.');
+      throw new ForbiddenException('Cette annonce n’est pas la vôtre.');
     }
     if (existing.status === 'SOLD') {
       throw new ConflictException('Cette annonce est vendue : elle ne peut plus être modifiée.');
@@ -309,7 +321,7 @@ export class ListingsService {
 
     if (!listing) throw new NotFoundException('Nous ne retrouvons pas cette annonce.');
     if (listing.sellerId !== sellerId) {
-      throw new ForbiddenException('Cette annonce n’est pas la tienne.');
+      throw new ForbiddenException('Cette annonce n’est pas la vôtre.');
     }
     if (listing.order) {
       throw new ConflictException(
@@ -336,45 +348,12 @@ export class ListingsService {
 
   // ————— Boost (CDC §3.5) —————
 
-  /**
-   * Active le mois de boost offert à l'inscription (CDC §3.1). Consommable une
-   * seule fois, sur l'annonce de son choix, tant que le crédit n'a pas expiré.
+  /*
+   * Le mois offert ne se réclame plus : toute annonce publiée pendant qu'il
+   * court est mise en avant d'office (voir AdminService.reviewListing). La
+   * méthode « useFreeBoost » qui vivait ici, et son point d'entrée
+   * POST /listings/:id/boost/free, n'avaient plus d'objet.
    */
-  async useFreeBoost(listingId: string, sellerId: string): Promise<ListingDto> {
-    const [listing, seller] = await Promise.all([
-      this.prisma.listing.findUnique({ where: { id: listingId } }),
-      this.prisma.user.findUnique({ where: { id: sellerId } }),
-    ]);
-
-    if (!listing) throw new NotFoundException('Nous ne retrouvons pas cette annonce.');
-    if (listing.sellerId !== sellerId) throw new ForbiddenException('Cette annonce n’est pas la tienne.');
-    if (listing.status !== 'PUBLISHED') {
-      throw new BadRequestException('Seule une annonce en ligne peut être mise en avant.');
-    }
-    if (!seller?.freeBoostUntil || seller.freeBoostUntil.getTime() <= Date.now()) {
-      throw new BadRequestException('Ton mois de mise en avant offert n’est plus disponible.');
-    }
-
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const result = await tx.listing.update({
-        where: { id: listingId },
-        data: { boostedUntil: seller.freeBoostUntil },
-        include: { _count: { select: { favorites: true } } },
-      });
-      // Le crédit est consommé : il ne peut pas être reporté sur une autre annonce.
-      await tx.user.update({ where: { id: sellerId }, data: { freeBoostUntil: null } });
-      return result;
-    });
-
-    await this.mail.send('boostActivated', seller.email, {
-      prenom: seller.prenom,
-      title: updated.title,
-      until: (updated.boostedUntil as Date).toLocaleDateString('fr-FR'),
-    });
-
-    const settings = await this.settings.get();
-    return toListingDto(updated, { uploads: this.uploads, settings });
-  }
 
   async createBoostCheckout(
     listingId: string,
@@ -386,7 +365,7 @@ export class ListingsService {
     });
 
     if (!listing) throw new NotFoundException('Nous ne retrouvons pas cette annonce.');
-    if (listing.sellerId !== sellerId) throw new ForbiddenException('Cette annonce n’est pas la tienne.');
+    if (listing.sellerId !== sellerId) throw new ForbiddenException('Cette annonce n’est pas la vôtre.');
     if (listing.status !== 'PUBLISHED') {
       throw new BadRequestException('Seule une annonce en ligne peut être mise en avant.');
     }
@@ -426,12 +405,19 @@ export class ListingsService {
       title: listing.title,
       until: boostedUntil.toLocaleDateString('fr-FR'),
     });
+
+    await this.notifications.notify(listing.sellerId, {
+      kind: 'BOOST_ACTIVATED',
+      title: 'Mise en avant renouvelée',
+      message: `« ${listing.title} » reste en tête du catalogue jusqu’au ${boostedUntil.toLocaleDateString('fr-FR')}.`,
+      link: '/mes-annonces',
+    });
   }
 
   async cancelBoost(listingId: string, sellerId: string): Promise<{ message: string }> {
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing) throw new NotFoundException('Nous ne retrouvons pas cette annonce.');
-    if (listing.sellerId !== sellerId) throw new ForbiddenException('Cette annonce n’est pas la tienne.');
+    if (listing.sellerId !== sellerId) throw new ForbiddenException('Cette annonce n’est pas la vôtre.');
 
     if (listing.stripeBoostSubscriptionId) {
       await this.stripe.cancelBoostSubscription(listing.stripeBoostSubscriptionId);

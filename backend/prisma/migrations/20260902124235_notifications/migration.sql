@@ -1,0 +1,22 @@
+-- CreateEnum
+CREATE TYPE "NotificationKind" AS ENUM ('LISTING_SUBMITTED', 'LISTING_APPROVED', 'LISTING_REJECTED', 'ORDER_PAID', 'ORDER_SOLD', 'ORDER_SHIPPED', 'ORDER_RECEIVED', 'PAYOUT_RELEASED', 'AUTO_CONFIRMED', 'MESSAGE', 'ACCESS_FEE_PAID', 'BOOST_ACTIVATED', 'APPLICATION_ACCEPTED', 'STRIPE_READY', 'RETURN_REQUESTED', 'RETURN_ACCEPTED', 'RETURN_REJECTED', 'REFUND_ISSUED', 'INFO', 'TODO_ACCESS_FEE', 'TODO_ONBOARDING', 'TODO_STRIPE', 'TODO_LISTING_REVIEW', 'TODO_SHIP', 'TODO_CONFIRM_RECEPTION', 'TODO_ADMIN_REVIEW');
+
+-- CreateTable
+CREATE TABLE "Notification" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "kind" "NotificationKind" NOT NULL,
+    "title" TEXT NOT NULL,
+    "message" TEXT,
+    "link" TEXT,
+    "isRead" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "Notification_userId_isRead_createdAt_idx" ON "Notification"("userId", "isRead", "createdAt");
+
+-- AddForeignKey
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -36,9 +36,9 @@ Les données ne sont transmises qu'aux prestataires nécessaires au service : h�
 
 Les données sont hébergées au sein de l'Union européenne.
 
-## 7. Tes droits
+## 7. Vos droits
 
-Tu disposes d'un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité. Ces droits s'exercent depuis la page d'aide ou par e-mail. Tu peux également introduire une réclamation auprès de la CNIL.
+Vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité. Ces droits s'exercent depuis la page d'aide ou par e-mail. Vous pouvez également introduire une réclamation auprès de la CNIL.
 
 ## 8. Cookies
 

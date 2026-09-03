@@ -27,7 +27,7 @@ export class SupportService {
 
     return {
       message:
-        'Ton message a bien été transmis. Nous te répondrons par e-mail dans les meilleurs délais, in cha Allah.',
+        'Votre message a bien été transmis. Nous vous répondrons par e-mail dans les meilleurs délais, in cha Allah.',
     };
   }
 }

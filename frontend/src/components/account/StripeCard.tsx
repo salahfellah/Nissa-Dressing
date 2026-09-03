@@ -21,6 +21,7 @@ export default function StripeCard({ compact = false }: { compact?: boolean }) {
   const [isConnecting, setIsConnecting] = useState(false);
 
   const isComplete = user?.stripeConnectStatus === 'COMPLETE';
+  const isPending = user?.stripeConnectStatus === 'PENDING';
 
   const start = async () => {
     setError(null);
@@ -32,7 +33,7 @@ export default function StripeCard({ compact = false }: { compact?: boolean }) {
       setError(
         exception instanceof ApiError
           ? exception.message
-          : 'Stripe est momentanément indisponible. Réessaie dans un instant.',
+          : 'Stripe est momentanément indisponible. Réessayez dans un instant.',
       );
       setIsConnecting(false);
     }
@@ -49,10 +50,17 @@ export default function StripeCard({ compact = false }: { compact?: boolean }) {
   };
 
   const refresh = async () => {
+    setNotice(null);
     try {
-      setUser(await api.post<MeDto>('/account/stripe/refresh'));
+      const me = await api.post<MeDto>('/account/stripe/refresh');
+      setUser(me);
+      setNotice(
+        me.stripeConnectStatus === 'COMPLETE'
+          ? 'Votre compte Stripe est prêt.'
+          : 'Stripe demande encore des informations. Continuez le formulaire, puis actualisez à nouveau.',
+      );
     } catch {
-      /* Le statut sera relu au prochain chargement. */
+      setNotice('Le statut Stripe n’a pas pu être relu pour le moment.');
     }
   };
 
@@ -67,8 +75,8 @@ export default function StripeCard({ compact = false }: { compact?: boolean }) {
 
       {isComplete ? (
         <>
-          <Alert variant="success" title="Ton compte de paiement est prêt">
-            Tu peux vendre sereinement : les fonds te sont reversés dès qu’une acheteuse confirme
+          <Alert variant="success" title="Votre compte de paiement est prêt">
+            Vous pouvez vendre sereinement : les fonds vous sont reversés dès qu’une acheteuse confirme
             avoir bien reçu son colis.
           </Alert>
           {!compact && (
@@ -80,13 +88,21 @@ export default function StripeCard({ compact = false }: { compact?: boolean }) {
         </>
       ) : (
         <>
-          <Alert variant="info" title="Tes coordonnées bancaires ne passent pas par le site">
-            La saisie se fait directement chez Stripe, notre prestataire de paiement. Nissa Dressing
-            n’a jamais accès à ton IBAN.
+          <Alert
+            variant={isPending ? 'warning' : 'info'}
+            title={
+              isPending
+                ? 'Votre configuration Stripe est en cours'
+                : 'Vos coordonnées bancaires ne passent pas par le site'
+            }
+          >
+            {isPending
+              ? 'Terminez le formulaire hébergé par Stripe, puis actualisez votre compte.'
+              : 'La saisie se fait directement chez Stripe, notre prestataire de paiement. Nissa Dressing n’a jamais accès à votre IBAN.'}
           </Alert>
           <Button onClick={start} isLoading={isConnecting} variant="secondary">
             <CreditCard size={16} />
-            Configurer avec Stripe
+            {isPending ? 'Continuer chez Stripe' : 'Configurer avec Stripe'}
           </Button>
           <button
             onClick={() => void refresh()}

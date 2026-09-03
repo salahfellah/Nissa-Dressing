@@ -53,7 +53,7 @@ export default function AudioRecorder({ onChange, maxSeconds = 120 }: AudioRecor
     setError(null);
 
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      setError('Ton navigateur ne permet pas l’enregistrement. Dépose un fichier audio ci-dessous.');
+      setError('Votre navigateur ne permet pas l’enregistrement. Déposez un fichier audio ci-dessous.');
       return;
     }
 
@@ -137,9 +137,9 @@ export default function AudioRecorder({ onChange, maxSeconds = 120 }: AudioRecor
         Dépôt de serment
       </p>
       <p className="text-xs mb-6 text-brunProfond leading-relaxed">
-        Enregistre un court message audio dans lequel tu prêtes serment d’être véritablement une
+        Enregistrez un court message audio dans lequel vous prêtez serment d’être véritablement une
         sœur. Cet enregistrement reste confidentiel : il n’est écouté que par l’administratrice, et
-        il est supprimé si ta candidature n’est pas retenue.
+        il est supprimé si votre candidature n’est pas retenue.
       </p>
 
       <button

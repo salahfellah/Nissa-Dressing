@@ -3,7 +3,7 @@
 import { Check } from 'lucide-react';
 import { Button, ButtonLink } from '@/components/ui';
 
-/** Confirmation après dépôt — CDC §3.3 (« ta demande sera examinée »). */
+/** Confirmation après dépôt — CDC §3.3 (« votre demande sera examinée »). */
 export default function SubmittedNotice({ onNewListing }: { onNewListing: () => void }) {
   return (
     <div className="max-w-lg mx-auto px-4 py-16 text-center fade-in">
@@ -13,11 +13,11 @@ export default function SubmittedNotice({ onNewListing }: { onNewListing: () => 
 
       <h1 className="text-2xl font-playfair mb-4 text-brunProfond">Merci, ma sœur !</h1>
       <p className="text-sm text-brunProfond leading-relaxed mb-6">
-        Ton annonce vient d’être transmise à l’administratrice. Elle la regardera avec attention,
+        Votre annonce vient d’être transmise à l’administratrice. Elle la regardera avec attention,
         pour que chaque article proposé reste conforme — c’est ce qui fait la confiance entre nous.
         <br />
         <br />
-        Tu recevras un e-mail dès qu’elle sera en ligne, in cha Allah.
+        Vous recevrez un e-mail dès qu’elle sera en ligne, in cha Allah.
       </p>
 
       <div className="space-y-3">

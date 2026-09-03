@@ -103,7 +103,7 @@ export class UploadsService implements OnModuleInit {
         .toFile(absolute);
     } catch (error) {
       this.logger.error(`Traitement image impossible : ${(error as Error).message}`);
-      throw new BadRequestException('Cette image n’a pas pu être traitée. Essaie avec une autre photo.');
+      throw new BadRequestException('Cette image n’a pas pu être traitée. Essayez avec une autre photo.');
     }
 
     return { path: `photos/${name}` };
@@ -118,7 +118,7 @@ export class UploadsService implements OnModuleInit {
     const extension = AUDIO_MIME.get(file.mimetype) ?? extname(file.originalname).toLowerCase();
     if (!AUDIO_MIME.has(file.mimetype) && !['.webm', '.mp3', '.m4a', '.ogg', '.wav'].includes(extension)) {
       throw new BadRequestException(
-        'Ce format audio n’est pas pris en charge. Enregistre depuis le site, ou dépose un MP3, M4A, WAV ou WebM.',
+        'Ce format audio n’est pas pris en charge. Enregistrez depuis le site, ou dépose un MP3, M4A, WAV ou WebM.',
       );
     }
     if (file.size > this.cfg.maxAudioBytes) {

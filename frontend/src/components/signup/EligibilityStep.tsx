@@ -20,11 +20,11 @@ export default function EligibilityStep({
       <h1 className="text-2xl font-playfair mb-6 text-brunProfond">Avant de commencer…</h1>
       <p className="text-sm mb-10 leading-relaxed text-brunProfond">
         Nissa Dressing est un espace pensé pour les sœurs, entre sœurs. Une seule question avant de
-        t’accueillir, pour préserver la confiance de toutes.
+        vous accueillir, pour préserver la confiance de toutes.
       </p>
 
       <div className="p-8 rounded-sm mb-10 bg-white border border-sable">
-        <h2 className="text-xl font-medium mb-8 text-orDore">Es-tu voilée ?</h2>
+        <h2 className="text-xl font-medium mb-8 text-orDore">Êtes-vous voilée ?</h2>
         <div className="space-y-4">
           <Button onClick={onAccept}>Oui</Button>
           <Button variant="secondary" onClick={onDecline}>

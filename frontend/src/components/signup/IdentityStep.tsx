@@ -1,6 +1,6 @@
 'use client';
 
-import type { SignupInput } from '@nissa/shared';
+import type { SignupFormInput } from '@nissa/shared';
 import Link from 'next/link';
 import type { UseFormReturn } from 'react-hook-form';
 import { Alert, Button, Input } from '@/components/ui';
@@ -11,7 +11,7 @@ export default function IdentityStep({
   formError,
   onSubmit,
 }: {
-  form: UseFormReturn<SignupInput>;
+  form: UseFormReturn<SignupFormInput>;
   formError: string | null;
   onSubmit: () => void;
 }) {
@@ -25,7 +25,7 @@ export default function IdentityStep({
     <section className="fade-in pb-10">
       <div className="mb-8 text-center mt-2">
         <h1 className="text-2xl font-playfair mb-2 text-brunProfond">Faisons connaissance</h1>
-        <p className="text-sm text-taupe">Quelques informations pour créer ton espace.</p>
+        <p className="text-sm text-taupe">Quelques informations pour créer votre espace.</p>
       </div>
 
       {formError && <Alert variant="error">{formError}</Alert>}
@@ -42,7 +42,7 @@ export default function IdentityStep({
 
         <Input
           label="Pseudo (facultatif)"
-          hint="C’est ce nom que les autres sœurs verront sur tes annonces. Laisse vide si tu préfères : nous t’en proposerons un à partir de ton prénom."
+          hint="C’est ce nom que les autres sœurs verront sur vos annonces. Laissez vide si vous préférez : nous vous en proposerons un à partir de votre prénom."
           error={errors.pseudo?.message}
           {...register('pseudo')}
         />
@@ -60,7 +60,7 @@ export default function IdentityStep({
           autoComplete="tel"
           inputMode="tel"
           placeholder="06 12 34 56 78"
-          hint="Pour que l’administratrice puisse te joindre sur WhatsApp au sujet de ta demande. Il n’est jamais montré aux autres sœurs."
+          hint="Pour que l’administratrice puisse vous joindre sur WhatsApp au sujet de votre demande. Il n’est jamais montré aux autres sœurs."
           required
           error={errors.phone?.message}
           {...register('phone')}
@@ -73,6 +73,15 @@ export default function IdentityStep({
           required
           error={errors.password?.message}
           {...register('password')}
+        />
+        <Input
+          label="Confirmez le mot de passe"
+          type="password"
+          autoComplete="new-password"
+          hint="Saisissez-le une seconde fois : une faute de frappe vous fermerait la porte de votre propre espace."
+          required
+          error={errors.passwordConfirmation?.message}
+          {...register('passwordConfirmation')}
         />
 
         <label className="flex items-start gap-2 text-xs text-brunProfond mt-4 cursor-pointer">

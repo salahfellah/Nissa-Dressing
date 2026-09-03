@@ -131,9 +131,9 @@ export const RETURN_STATUS_LABELS: Record<ReturnStatus, string> = {
  * l'uploader du formulaire de dépôt d'annonce.
  */
 export const PHOTO_WARNING = {
-  title: 'Avant d’ajouter tes photos',
+  title: 'Avant d’ajouter vos photos',
   rules: [
-    'Les photos ne doivent pas être prises portées sur toi ou sur une tierce personne.',
+    'Les photos ne doivent pas être prises portées sur vous ou sur une tierce personne.',
     'Exception : les vêtements couvrants (abaya, khimar, hijab, jilbeb, sittar, niqab, gants) peuvent être photographiés portés.',
     'Tout vêtement comportant une représentation d’âme (être animé) sera refusé.',
   ],

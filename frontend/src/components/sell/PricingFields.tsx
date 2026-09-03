@@ -90,15 +90,15 @@ export default function PricingFields({ form }: { form: UseFormReturn<ListingInp
       {/* Mention imposée par le CDC §3.3. */}
       <Alert variant="info" title="Les frais de port sont à la charge de l’acheteuse">
         Pour ce format, elle réglera <strong>{formatPrice(shippingCents)}</strong> en plus du prix de
-        ton article.
+        votre article.
       </Alert>
 
       {priceCents > 0 && (
         <div className="bg-white border border-sable rounded-sm p-4 text-sm">
-          <p className="text-xs uppercase tracking-wider text-taupe mb-3">Ce que tu recevras</p>
+          <p className="text-xs uppercase tracking-wider text-taupe mb-3">Ce que vous recevrez</p>
           <dl className="space-y-2">
             <div className="flex justify-between">
-              <dt className="text-brunProfond">Prix de ton article</dt>
+              <dt className="text-brunProfond">Prix de votre article</dt>
               <dd className="text-brunProfond">{formatPrice(priceCents)}</dd>
             </div>
             {settings.commissionPayer === 'SELLER' && (

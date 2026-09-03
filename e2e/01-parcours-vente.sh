@@ -12,7 +12,7 @@ require_api
 STAMP=$(date +%s)
 
 step "1. Connexions"
-R=$(login admin "admin@nissa-dressing.fr" "Admin1234")
+R=$(login admin "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
 [ "$(echo "$R" | get role)" = "ADMIN" ] && ok "administratrice connectée" || fail "admin: $R"
 R=$(login buyer "amina@exemple.fr" "Soeur1234")
 [ "$(echo "$R" | get status)" = "MEMBER" ] && ok "acheteuse connectée" || fail "acheteuse: $R"
@@ -26,6 +26,7 @@ printf 'faux-audio-de-serment' > "$JARS/serment.webm"
 R=$(curl -s -X POST "$API/auth/signup" \
       -F "prenom=Nour" -F "nom=T." -F "pseudo=nour$STAMP" \
       -F "email=nour$STAMP@exemple.fr" -F "password=Soeur1234" \
+      -F "phone=06 12 34 56 78" \
       -F "isVeiled=true" -F "acceptsTerms=true" \
       -F "audio=@$JARS/serment.webm;type=audio/webm")
 echo "$R" | grep -q "transmise" && ok "candidature déposée avec son audio" || fail "signup: $R"
@@ -38,6 +39,7 @@ C=$(code -b "$(jar cand)" "$API/listings/mine")
 R=$(curl -s -X POST "$API/auth/signup" \
       -F "prenom=Doublon" -F "nom=T." -F "pseudo=autre$STAMP" \
       -F "email=nour$STAMP@exemple.fr" -F "password=Soeur1234" \
+      -F "phone=06 12 34 56 78" \
       -F "isVeiled=true" -F "acceptsTerms=true" \
       -F "audio=@$JARS/serment.webm;type=audio/webm")
 echo "$R" | grep -q "déjà utilisée" && ok "e-mail déjà inscrit refusé" || fail "doublon: $R"

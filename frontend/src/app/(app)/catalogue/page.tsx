@@ -35,7 +35,7 @@ export default function CataloguePage() {
         setRecent(page.items.filter((item) => !item.isBoosted));
       })
       .catch(() =>
-        setError('Le catalogue n’a pas pu être chargé. Vérifie que l’API est démarrée.'),
+        setError('Le catalogue n’a pas pu être chargé. Vérifiez que l’API est démarrée.'),
       )
       .finally(() => setIsLoading(false));
   }, []);
@@ -99,7 +99,7 @@ export default function CataloguePage() {
                 {
                   icon: ShoppingBag,
                   title: 'Paiement protégé',
-                  text: 'Ton argent est conservé jusqu’à réception du colis',
+                  text: 'Votre argent est conservé jusqu’à réception du colis',
                 },
                 {
                   icon: PackageSearch,
@@ -123,7 +123,7 @@ export default function CataloguePage() {
 
         {/* ————— Catégories ————— */}
         <section className="mb-12">
-          <SectionTitle subtitle="Trouve exactement ce que tu cherches.">Catégories</SectionTitle>
+          <SectionTitle subtitle="Trouvez exactement ce que vous cherchez.">Catégories</SectionTitle>
           <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {CATEGORIES.map((category) => {
               const count = categoryCounts?.get(category.id);
@@ -197,7 +197,7 @@ export default function CataloguePage() {
                 title="Le catalogue est encore vide"
                 description={
                   isMember
-                    ? 'Sois la première à déposer une annonce : ta pièce sera visible dès sa validation.'
+                    ? 'Soyez la première à déposer une annonce : votre pièce sera visible dès sa validation.'
                     : 'Les premières annonces arrivent bientôt, in cha Allah.'
                 }
                 action={isMember ? <ButtonLink href="/vendre">Vendre un article</ButtonLink> : undefined}

@@ -80,6 +80,38 @@ enum ReturnReason {
   OTHER
 }
 
+/// Nature d'une notification interne — miroir de shared/src/enums.ts.
+/// Les TODO_* sont des rappels calculés à la volée ; les autres, des
+/// événements enregistrés.
+enum NotificationKind {
+  LISTING_SUBMITTED
+  LISTING_APPROVED
+  LISTING_REJECTED
+  ORDER_PAID
+  ORDER_SOLD
+  ORDER_SHIPPED
+  ORDER_RECEIVED
+  PAYOUT_RELEASED
+  AUTO_CONFIRMED
+  MESSAGE
+  ACCESS_FEE_PAID
+  BOOST_ACTIVATED
+  APPLICATION_ACCEPTED
+  STRIPE_READY
+  RETURN_REQUESTED
+  RETURN_ACCEPTED
+  RETURN_REJECTED
+  REFUND_ISSUED
+  INFO
+  TODO_ACCESS_FEE
+  TODO_ONBOARDING
+  TODO_STRIPE
+  TODO_LISTING_REVIEW
+  TODO_SHIP
+  TODO_CONFIRM_RECEPTION
+  TODO_ADMIN_REVIEW
+}
+
 // ————————————————————————————————————————————————————————————
 // Membres
 // ————————————————————————————————————————————————————————————
@@ -138,6 +170,7 @@ model User {
   ordersAsSeller   Order[]         @relation("SellerOrders")
   messages         Message[]
   returnRequests   ReturnRequest[]
+  notifications    Notification[]
   refreshTokens    RefreshToken[]
   passwordResets   PasswordReset[]
 
@@ -355,6 +388,30 @@ model ReturnRequest {
   requestedBy User  @relation(fields: [requestedById], references: [id], onDelete: Cascade)
 
   @@index([status])
+}
+
+// ————————————————————————————————————————————————————————————
+// Notifications internes — rappels et suivi d'activité
+// ————————————————————————————————————————————————————————————
+
+/// Fil de notifications du site : une ligne par événement. Les rappels
+/// « à faire » (TODO_*) ne sont pas stockés — ils se recomputent à la volée.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  kind      NotificationKind
+  /// Phrase courte, enregistrée telle quelle au moment de l'événement.
+  title     String
+  /// Détail optionnel (explication, nom de la sœur, motif d'un refus).
+  message   String?
+  /// Chemin interne du site vers la page concernée.
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
 }
 
 // ————————————————————————————————————————————————————————————

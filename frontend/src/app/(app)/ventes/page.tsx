@@ -9,9 +9,9 @@ export default function SalesPage() {
       <OrderList
         role="seller"
         title="Mes ventes"
-        subtitle="Télécharge tes bordereaux et suis le versement de tes paiements."
+        subtitle="Téléchargez vos bordereaux et suivez le versement de vos paiements."
         emptyTitle="Aucune vente pour l’instant"
-        emptyDescription="Dès qu’une sœur achètera l’une de tes pièces, la commande apparaîtra ici."
+        emptyDescription="Dès qu’une sœur achètera l’une de vos pièces, la commande apparaîtra ici."
       />
     </RequireMember>
   );

@@ -95,13 +95,6 @@ export class ListingsController {
 
   @MemberOnly()
   @HttpCode(200)
-  @Post(':id/boost/free')
-  useFreeBoost(@Param('id') id: string, @CurrentUser() user: AuthUser): Promise<ListingDto> {
-    return this.listings.useFreeBoost(id, user.id);
-  }
-
-  @MemberOnly()
-  @HttpCode(200)
   @Post(':id/boost/checkout')
   boostCheckout(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.listings.createBoostCheckout(id, user.id);

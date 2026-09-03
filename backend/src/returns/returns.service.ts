@@ -13,6 +13,7 @@ import { PdfService } from '../pdf/pdf.service';
 import { StripeService } from '../stripe/stripe.service';
 import { SettingsService } from '../settings/settings.service';
 import { UploadsService } from '../uploads/uploads.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /**
  * Retours et remboursements — CDC §3.7.
@@ -33,6 +34,7 @@ export class ReturnsService {
     private readonly stripe: StripeService,
     private readonly uploads: UploadsService,
     private readonly settings: SettingsService,
+    private readonly notifications: NotificationsService,
     config: ConfigService,
   ) {
     this.adminEmail = config.getOrThrow<{ email: string }>('admin').email;
@@ -98,7 +100,7 @@ export class ReturnsService {
 
     if (order.autoConfirmedAt || (echeance !== null && Date.now() > echeance)) {
       throw new ConflictException(
-        `Le délai de ${autoConfirmDays} jours pour signaler un souci est écoulé : cette commande est considérée comme reçue et conforme. Écris-nous depuis le centre d’aide si la situation le justifie.`,
+        `Le délai de ${autoConfirmDays} jours pour signaler un souci est écoulé : cette commande est considérée comme reçue et conforme. Écrivez-nous depuis le centre d’aide si la situation le justifie.`,
       );
     }
 
@@ -124,6 +126,13 @@ export class ReturnsService {
       adminUrl: this.mail.url('/admin/litiges'),
     });
 
+    await this.notifications.notify(buyerId, {
+      kind: 'RETURN_REQUESTED',
+      title: `Demande de retour envoyée pour ${order.reference}`,
+      message: 'L’administratrice va examiner votre demande. Vous recevrez une réponse ici, in cha Allah.',
+      link: '/compte',
+    });
+
     return this.toDto(request);
   }
 
@@ -146,7 +155,7 @@ export class ReturnsService {
 
     const order = request.order as unknown as { reference: string; buyerId: string; sellerId: string };
     if (order.buyerId !== viewer.id && order.sellerId !== viewer.id && viewer.role !== 'ADMIN') {
-      throw new ForbiddenException('Cette demande ne t’est pas destinée.');
+      throw new ForbiddenException('Cette demande ne vous est pas destinée.');
     }
 
     return this.toDto(request as never);
@@ -182,11 +191,23 @@ export class ReturnsService {
         reference: request.order.reference,
         returnSlipUrl: this.mail.url(`/retours/${id}/bordereau`),
       });
+      await this.notifications.notify(buyer.id, {
+        kind: 'RETURN_ACCEPTED',
+        title: `Retour accepté pour ${request.order.reference}`,
+        message: 'Votre bordereau de retour est prêt : il a été envoyé par e-mail. Renvoyez le colis sans pression.',
+        link: '/compte',
+      });
     } else {
       await this.mail.send('returnRejected', buyer.email, {
         prenom: buyer.prenom,
         reference: request.order.reference,
         note: note ?? null,
+      });
+      await this.notifications.notify(buyer.id, {
+        kind: 'RETURN_REJECTED',
+        title: `Retour non retenu pour ${request.order.reference}`,
+        message: note?.trim() || 'L’administratrice n’a pas retenu cette demande. Si vous n’êtes pas d’accord, écrivez-nous depuis le centre d’aide.',
+        link: '/compte',
       });
     }
 
@@ -222,7 +243,7 @@ export class ReturnsService {
           `Remboursement Stripe impossible pour ${order.reference} : ${(error as Error).message}`,
         );
         throw new ConflictException(
-          'Le remboursement Stripe n’a pas abouti. Vérifie le paiement dans le tableau de bord Stripe.',
+          'Le remboursement Stripe n’a pas abouti. Vérifiez le paiement dans le tableau de bord Stripe.',
         );
       }
     }
@@ -250,6 +271,13 @@ export class ReturnsService {
       amountCents: order.totalCents,
     });
 
+    await this.notifications.notify(order.buyerId, {
+      kind: 'REFUND_ISSUED',
+      title: `Remboursement de la commande ${order.reference}`,
+      message: `Les ${(order.totalCents / 100).toLocaleString('fr-FR')} € de votre commande ont été remboursés.`,
+      link: '/compte',
+    });
+
     return this.toDto(updated);
   }
 
@@ -265,11 +293,11 @@ export class ReturnsService {
 
     if (!request) throw new NotFoundException('Nous ne retrouvons pas cette demande de retour.');
     if (request.requestedById !== viewer.id && viewer.role !== 'ADMIN') {
-      throw new ForbiddenException('Ce bordereau ne t’est pas destiné.');
+      throw new ForbiddenException('Ce bordereau ne vous est pas destiné.');
     }
     if (request.status === 'PENDING_REVIEW' || request.status === 'REJECTED') {
       throw new ConflictException(
-        'Ton bordereau de retour sera prêt dès que ta demande aura été acceptée.',
+        'Votre bordereau de retour sera prêt dès que votre demande aura été acceptée.',
       );
     }
 

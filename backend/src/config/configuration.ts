@@ -16,6 +16,31 @@ const DEV_ACCESS_SECRET = 'dev-access-secret';
 const DEV_REFRESH_SECRET = 'dev-refresh-secret';
 const DEV_ADMIN_PASSWORD = 'Admin1234';
 
+/**
+ * Choix du mode Stripe.
+ *
+ * Par défaut il se déduit de la présence d'une clé secrète. `STRIPE_MODE` permet
+ * de forcer le mode simulé alors qu'une clé de test est renseignée : le parcours
+ * complet (frais d'accès, coordonnées bancaires, commande, séquestre, boost)
+ * redevient jouable en local sans compte Stripe ni relais de webhooks, sans
+ * qu'il faille effacer la clé du fichier .env pour y revenir ensuite.
+ */
+function resoudreLeModeStripe(demande: string, secretKey: string): 'live' | 'mock' {
+  if (demande === 'mock') return 'mock';
+  if (demande === 'live') {
+    if (!secretKey) {
+      throw new Error(
+        'STRIPE_MODE=live mais STRIPE_SECRET_KEY est absente : renseignez la clé ou repassez en STRIPE_MODE=mock.',
+      );
+    }
+    return 'live';
+  }
+  if (demande) {
+    throw new Error(`STRIPE_MODE doit valoir "live" ou "mock" (reçu : « ${demande} »).`);
+  }
+  return secretKey ? 'live' : 'mock';
+}
+
 export interface AppConfig {
   env: string;
   isProduction: boolean;
@@ -32,11 +57,15 @@ export interface AppConfig {
   cookieSecure: boolean;
   admin: { email: string; password: string; pseudo: string };
   stripe: {
-    /** `live` dès qu'une clé secrète est fournie, `mock` sinon (parcours simulé de bout en bout). */
+    /**
+     * `live` dès qu'une clé secrète est fournie, `mock` sinon (parcours simulé de
+     * bout en bout). `STRIPE_MODE` prime sur cette déduction.
+     */
     mode: 'live' | 'mock';
     secretKey: string;
     webhookSecret: string;
     boostPriceId: string;
+    bypassConnect: boolean;
   };
   mail: {
     /** `smtp` si un hôte est configuré, `file` sinon (les e-mails sont écrits sur disque). */
@@ -107,14 +136,20 @@ function verifierLaProduction(config: AppConfig): void {
   }
   if (config.stripe.mode === 'mock') {
     problemes.push(
-      'STRIPE_SECRET_KEY est absente : les paiements seraient simulés, donc aucun encaissement réel.',
+      'Stripe est en mode simulé : les paiements ne seraient pas encaissés. ' +
+        'Renseignez STRIPE_SECRET_KEY et retirez STRIPE_MODE=mock.',
+    );
+  }
+  if (config.stripe.bypassConnect) {
+    problemes.push(
+      'STRIPE_BYPASS_CONNECT=true : les vendeuses seraient considérées comme payables sans Stripe Connect.',
     );
   }
 
   if (problemes.length) {
     throw new Error(
       `Configuration de production incomplète :\n  - ${problemes.join('\n  - ')}\n` +
-        'Corrige ces points dans les variables d’environnement avant de démarrer.',
+        'Corrigez ces points dans les variables d’environnement avant de démarrer.',
     );
   }
 }
@@ -123,6 +158,14 @@ export const configuration = (): AppConfig => {
   const env = process.env.NODE_ENV ?? 'development';
   const isProduction = env === 'production';
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY?.trim() ?? '';
+  const stripeMode = resoudreLeModeStripe(
+    process.env.STRIPE_MODE?.trim().toLowerCase() ?? '',
+    stripeSecretKey,
+  );
+  const stripeBypassConnect = bool(
+    process.env.STRIPE_BYPASS_CONNECT,
+    !isProduction && stripeMode === 'live' && stripeSecretKey.startsWith('sk_test_'),
+  );
   const smtpHost = process.env.SMTP_HOST?.trim() ?? '';
   const uploadDir = process.env.UPLOAD_DIR?.trim() || 'var/uploads';
 
@@ -148,10 +191,11 @@ export const configuration = (): AppConfig => {
       pseudo: process.env.ADMIN_PSEUDO ?? 'administratrice',
     },
     stripe: {
-      mode: stripeSecretKey ? 'live' : 'mock',
+      mode: stripeMode,
       secretKey: stripeSecretKey,
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
       boostPriceId: process.env.STRIPE_BOOST_PRICE_ID ?? '',
+      bypassConnect: stripeBypassConnect,
     },
     mail: {
       mode: smtpHost ? 'smtp' : 'file',

@@ -17,17 +17,17 @@ export default function SubmittedStep() {
 
       <h1 className="text-2xl font-playfair mb-4 text-brunProfond">Merci, ma sœur !</h1>
       <p className="text-sm mb-6 leading-relaxed text-brunProfond">
-        Ta demande nous est bien parvenue. L’administratrice l’examinera avec attention, ton message
+        Votre demande nous est bien parvenue. L’administratrice l’examinera avec attention, votre message
         audio compris — cela demande un peu de temps, et c’est ce qui protège la communauté.
       </p>
 
       <div className="p-4 bg-white rounded-sm mb-8 text-xs text-left border-l-3 border-orDore">
-        <p className="font-semibold mb-2 text-brunProfond">Ce qui t’attend</p>
+        <p className="font-semibold mb-2 text-brunProfond">Ce qui vous attend</p>
         <p className="text-brunProfond leading-relaxed">
-          Tu recevras un e-mail dès qu’une réponse sera prête. Si ta demande est acceptée, une
-          participation unique de <strong>{formatPrice(settings.accessFeeCents)}</strong> te sera
-          demandée : elle t’ouvre l’accès à vie, avec {settings.freeBoostDays} jours de mise en
-          avant offerts pour ta première annonce.
+          Vous recevrez un e-mail dès qu’une réponse sera prête. Si votre demande est acceptée, une
+          participation unique de <strong>{formatPrice(settings.accessFeeCents)}</strong> vous sera
+          demandée : elle vous ouvre l’accès à vie, avec {settings.freeBoostDays} jours de mise en
+          avant offerts pour votre première annonce.
         </p>
       </div>
 

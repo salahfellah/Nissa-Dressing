@@ -10,6 +10,19 @@ MAILPIT="${MAILPIT_URL:-http://localhost:8025}"
 JARS="$(dirname "${BASH_SOURCE[0]}")/.jars"
 mkdir -p "$JARS"
 
+# Le compte administratrice est celui que `db:seed` a créé, donc celui du .env
+# de l'API. Le figer ici condamnerait la suite dès qu'une installation choisit
+# d'autres identifiants — ce qui est le cas de tout poste réel.
+ENV_API="$(dirname "${BASH_SOURCE[0]}")/../backend/.env"
+lire_env() {
+  [ -f "$ENV_API" ] || return 0
+  sed -n "s/^$1=//p" "$ENV_API" | head -1 | sed 's/^"//; s/"$//'
+}
+ADMIN_EMAIL="${ADMIN_EMAIL:-$(lire_env ADMIN_EMAIL)}"
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@nissa-dressing.fr}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-$(lire_env ADMIN_PASSWORD)}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-Admin1234}"
+
 FAILED=0
 PASSED=0
 

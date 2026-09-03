@@ -55,7 +55,7 @@ export default function OrderSummary({ order }: { order: OrderDto }) {
             </div>
             {!isBuyer && (
               <div className="flex justify-between text-orDore font-semibold">
-                <dt>Ce que tu reçois</dt>
+                <dt>Ce que vous recevez</dt>
                 <dd>{formatPrice(order.price.sellerPayoutCents)}</dd>
               </div>
             )}

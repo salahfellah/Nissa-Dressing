@@ -45,7 +45,7 @@ export default function PhotoUploader({
 
     const remaining = max - photos.length;
     if (remaining <= 0) {
-      setUploadError(`Tu as atteint la limite de ${max} photos.`);
+      setUploadError(`Vous avez atteint la limite de ${max} photos.`);
       return;
     }
 
@@ -62,7 +62,7 @@ export default function PhotoUploader({
       setUploadError(
         uploadException instanceof ApiError
           ? uploadException.message
-          : 'Le téléversement a échoué. Réessaie.',
+          : 'Le téléversement a échoué. Réessayez.',
       );
     } finally {
       setIsUploading(false);

@@ -34,7 +34,7 @@ export default function AdminListingsPage() {
   const review = async (id: string, accepted: boolean) => {
     // Un refus sans motif laisserait la vendeuse sans piste pour corriger.
     if (!accepted && !reasons[id]?.trim()) {
-      setError('Indique un motif de refus : il est transmis à la vendeuse pour qu’elle corrige.');
+      setError('Indiquez un motif de refus : il est transmis à la vendeuse pour qu’elle corrige.');
       return;
     }
 
@@ -58,7 +58,7 @@ export default function AdminListingsPage() {
 
   return (
     <>
-      <SectionTitle subtitle="Vérifie la conformité des articles et des photos avant publication.">
+      <SectionTitle subtitle="Vérifiez la conformité des articles et des photos avant publication.">
         Annonces à modérer ({listings.length})
       </SectionTitle>
 

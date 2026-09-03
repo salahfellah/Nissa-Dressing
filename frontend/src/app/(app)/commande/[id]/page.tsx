@@ -38,26 +38,40 @@ function OrderContent() {
     }
   }, [id]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const payment = searchParams.get('paiement');
+  const sessionId = searchParams.get('session_id');
 
   useEffect(() => {
-    const payment = searchParams.get('paiement');
+    // Retour de Stripe Checkout : on fait relire la session par l'API avant
+    // d'afficher la commande, sinon elle s'ouvre encore « en attente de
+    // paiement » tant que le webhook n'est pas passé.
+    const ouvrir = async () => {
+      if (sessionId) {
+        await api.post('/payments/confirm', { sessionId }).catch(() => undefined);
+      }
+      await load();
+    };
+
+    void ouvrir();
+  }, [load, sessionId]);
+
+  useEffect(() => {
     if (payment === 'ok') {
-      setNotice('Ton paiement est confirmé. La vendeuse est prévenue et prépare ton colis.');
+      setNotice('Votre paiement est confirmé. La vendeuse est prévenue et prépare votre colis.');
     } else if (payment === 'annule') {
-      setError('Le paiement a été interrompu. Ta commande t’attend, tu peux reprendre quand tu veux.');
+      setError(
+        'Le paiement a été interrompu. Votre commande vous attend, vous pouvez reprendre quand vous voulez.',
+      );
     }
-  }, [searchParams]);
+  }, [payment]);
 
-  if (isLoading) return <Spinner label="Nous ouvrons ta commande…" />;
+  if (isLoading) return <Spinner label="Nous ouvrons votre commande…" />;
 
   if (!order) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16">
         <Alert variant="error" title="Commande introuvable">
-          {error ?? 'Cette commande n’existe pas ou ne t’est pas destinée.'}
+          {error ?? 'Cette commande n’existe pas ou ne vous est pas destinée.'}
         </Alert>
         <ButtonLink href="/achats" variant="secondary">
           Retour à mes achats

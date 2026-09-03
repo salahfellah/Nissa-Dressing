@@ -82,7 +82,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   } catch {
     throw new ApiError(0, {
       message:
-        'Impossible de joindre le serveur. Vérifie que l’API est démarrée (npm run dev:api).',
+        'Impossible de joindre le serveur. Vérifiez que l’API est démarrée (npm run dev:api).',
     });
   }
 

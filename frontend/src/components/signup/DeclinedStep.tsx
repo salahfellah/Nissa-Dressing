@@ -12,7 +12,7 @@ export default function DeclinedStep() {
         la conformité des articles échangés entre sœurs.
         <br />
         <br />
-        Nous te remercions sincèrement de ta compréhension, et te souhaitons le meilleur.
+        Nous vous remercions sincèrement de votre compréhension, et vous souhaitons le meilleur.
       </p>
       <ButtonLink href="/" variant="secondary">
         Retour à l’accueil

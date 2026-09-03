@@ -1,7 +1,7 @@
 'use client';
 
 import { LISTING_STATUS_LABELS, formatPrice, type ListingDto, type ListingStatus } from '@nissa/shared';
-import { Gift, ImageOff, Sparkles, Trash2 } from 'lucide-react';
+import { ImageOff, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge, Button } from '@/components/ui';
 
@@ -16,17 +16,13 @@ const STATUS_VARIANT: Record<ListingStatus, 'warning' | 'success' | 'danger' | '
 export default function MyListingRow({
   listing,
   isBusy,
-  freeBoostAvailable,
   boostPriceCents,
-  onUseFreeBoost,
   onBuyBoost,
   onRemove,
 }: {
   listing: ListingDto;
   isBusy: boolean;
-  freeBoostAvailable: boolean;
   boostPriceCents: number;
-  onUseFreeBoost: () => void;
   onBuyBoost: () => void;
   onRemove: () => void;
 }) {
@@ -77,7 +73,7 @@ export default function MyListingRow({
           <p className="mt-2 text-xs text-red-700 bg-red-50 border-l-2 border-red-400 p-2 rounded-sm">
             <strong>Ce qui a été relevé :</strong> {listing.rejectionReason}
             <br />
-            Tu peux corriger ton annonce et la proposer à nouveau.
+            Vous pouvez corriger votre annonce et la proposer à nouveau.
           </p>
         )}
 
@@ -90,18 +86,6 @@ export default function MyListingRow({
         <div className="flex flex-wrap gap-2 mt-3">
           {listing.status === 'PUBLISHED' && !listing.isBoosted && (
             <>
-              {freeBoostAvailable && (
-                <Button
-                  variant="outlineGold"
-                  fullWidth={false}
-                  className="text-xs py-2 px-3"
-                  isLoading={isBusy}
-                  onClick={onUseFreeBoost}
-                >
-                  <Gift size={13} />
-                  Utiliser mon mois offert
-                </Button>
-              )}
               <Button
                 variant="secondary"
                 fullWidth={false}

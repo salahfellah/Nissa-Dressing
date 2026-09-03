@@ -1,11 +1,12 @@
 'use client';
 
-import { computePrice, formatPrice, type ListingDto } from '@nissa/shared';
+import { computePrice, formatPrice, type AddressInput, type ListingDto } from '@nissa/shared';
 import { Info, ShieldCheck, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Alert, Button, ButtonLink, Card } from '@/components/ui';
+import AddressForm from '@/components/account/AddressForm';
+import { Alert, Button, ButtonLink, Card, Modal } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { usePlatformSettings } from '@/lib/providers';
@@ -24,28 +25,37 @@ export default function PurchasePanel({ listing }: { listing: ListingDto }) {
   const [error, setError] = useState<string | null>(null);
   const [addressIssue, setAddressIssue] = useState(false);
   const [isBuying, setIsBuying] = useState(false);
+  const [choixOuvert, setChoixOuvert] = useState(false);
+  const [destination, setDestination] = useState<'compte' | 'autre'>('compte');
 
   const isOwner = user?.id === listing.sellerId;
   const isAvailable = listing.status === 'PUBLISHED';
   const price = computePrice(listing.priceCents, listing.packageFormat, settings);
 
-  const startPurchase = async () => {
+  /**
+   * Le colis ne part pas toujours chez l'acheteuse : cadeau, livraison chez une
+   * proche, absence pendant la semaine. On lui laisse donc le choix avant de
+   * l'envoyer payer — après le paiement il serait trop tard, et une adresse
+   * ponctuelle ne doit pas remplacer celle de son compte.
+   */
+  const ouvrirChoixLivraison = () => {
     if (!user) {
       router.push('/connexion');
       return;
     }
-    // L'adresse de livraison alimente le bordereau : elle doit exister avant la commande.
-    if (!user.address) {
-      router.push(`/compte?retour=${encodeURIComponent(`/article/${listing.id}`)}`);
-      return;
-    }
+    setError(null);
+    // Sans adresse enregistrée, la saisie ponctuelle est la seule option.
+    setDestination(user.address ? 'compte' : 'autre');
+    setChoixOuvert(true);
+  };
 
+  const lancerCommande = async (shippingAddress: AddressInput) => {
     setError(null);
     setIsBuying(true);
     try {
       const { paymentUrl } = await api.post<{ paymentUrl: string }>('/orders', {
         listingId: listing.id,
-        shippingAddress: user.address,
+        shippingAddress,
       });
       window.location.href = paymentUrl;
     } catch (exception) {
@@ -58,21 +68,22 @@ export default function PurchasePanel({ listing }: { listing: ListingDto }) {
         );
         setError(
           adresseInvalide
-            ? 'Ton adresse de livraison est incomplète. Corrige-la depuis ton compte et reviens : ton article t’attend.'
+            ? 'Votre adresse de livraison est incomplète. Corrigez-la depuis votre compte et revenez : votre article vous attend.'
             : exception.message,
         );
         setAddressIssue(adresseInvalide);
       } else {
-        setError('Ta commande n’a pas pu être créée. Réessaie dans un instant.');
+        setError('Votre commande n’a pas pu être créée. Réessayez dans un instant.');
       }
+      setChoixOuvert(false);
       setIsBuying(false);
     }
   };
 
   if (isOwner) {
     return (
-      <Alert variant="info" title="C’est ton annonce">
-        Retrouve-la dans « Mes annonces » pour la modifier ou la mettre en avant.
+      <Alert variant="info" title="C’est votre annonce">
+        Retrouvez-la dans « Mes annonces » pour la modifier ou la mettre en avant.
       </Alert>
     );
   }
@@ -99,7 +110,7 @@ export default function PurchasePanel({ listing }: { listing: ListingDto }) {
   if (!isMember) {
     return (
       <Alert variant="info" title="Encore une étape">
-        Ton inscription n’est pas tout à fait terminée. Finalise-la et cet article sera à toi en
+        Votre inscription n’est pas tout à fait terminée. Finalisez-la et cet article sera à vous en
         deux clics.
       </Alert>
     );
@@ -145,21 +156,98 @@ export default function PurchasePanel({ listing }: { listing: ListingDto }) {
         </dl>
       </Card>
 
-      <Button onClick={startPurchase} isLoading={isBuying}>
+      <Button onClick={ouvrirChoixLivraison} isLoading={isBuying}>
         <ShoppingBag size={16} />
         Acheter — {formatPrice(price.totalCents)}
       </Button>
 
+      <Modal
+        open={choixOuvert}
+        onClose={() => setChoixOuvert(false)}
+        title="Où livrer votre colis ?"
+      >
+        {user.address && (
+          <label
+            className={`block border rounded-sm p-4 mb-3 cursor-pointer transition-colors ${
+              destination === 'compte' ? 'border-orDore bg-orDore/5' : 'border-sable'
+            }`}
+          >
+            <span className="flex items-start gap-3">
+              <input
+                type="radio"
+                name="destination"
+                className="mt-1 accent-orDore"
+                checked={destination === 'compte'}
+                onChange={() => setDestination('compte')}
+              />
+              <span className="text-sm">
+                <span className="block font-medium text-brunProfond">Mon adresse</span>
+                <span className="block text-taupe mt-1 leading-relaxed">
+                  {user.address.recipientName}
+                  <br />
+                  {user.address.line1}
+                  {user.address.line2 ? (
+                    <>
+                      <br />
+                      {user.address.line2}
+                    </>
+                  ) : null}
+                  <br />
+                  {user.address.postalCode} {user.address.city}
+                  <br />
+                  {user.address.country}
+                </span>
+              </span>
+            </span>
+          </label>
+        )}
+
+        <label
+          className={`block border rounded-sm p-4 mb-4 cursor-pointer transition-colors ${
+            destination === 'autre' ? 'border-orDore bg-orDore/5' : 'border-sable'
+          }`}
+        >
+          <span className="flex items-start gap-3">
+            <input
+              type="radio"
+              name="destination"
+              className="mt-1 accent-orDore"
+              checked={destination === 'autre'}
+              onChange={() => setDestination('autre')}
+            />
+            <span className="text-sm">
+              <span className="block font-medium text-brunProfond">Une autre adresse</span>
+              <span className="block text-taupe mt-1">
+                Chez une proche, au travail… Votre adresse habituelle n’est pas modifiée.
+              </span>
+            </span>
+          </span>
+        </label>
+
+        {destination === 'compte' && user.address ? (
+          <Button onClick={() => lancerCommande(user.address as AddressInput)} isLoading={isBuying}>
+            <ShoppingBag size={16} />
+            Continuer vers le paiement
+          </Button>
+        ) : (
+          <AddressForm
+            startEmpty
+            submitLabel="Continuer vers le paiement"
+            onSubmitValues={lancerCommande}
+          />
+        )}
+      </Modal>
+
       <p className="flex items-start gap-2 text-xs text-taupe mt-4 leading-relaxed">
         <ShieldCheck size={14} className="shrink-0 mt-0.5 text-orDore" />
-        Ton paiement est gardé en sécurité et n’est versé à la vendeuse qu’une fois que tu as
-        confirmé avoir bien reçu ton colis.
+        Votre paiement est gardé en sécurité et n’est versé à la vendeuse qu’une fois que vous avez
+        confirmé avoir bien reçu votre colis.
       </p>
 
       {!user.address && (
         <p className="flex items-start gap-2 text-xs text-taupe mt-2">
           <Info size={14} className="shrink-0 mt-0.5" />
-          Nous te demanderons ton adresse de livraison avant le paiement.
+          Nous vous demanderons votre adresse de livraison avant le paiement.
         </p>
       )}
     </>

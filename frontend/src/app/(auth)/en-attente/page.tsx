@@ -17,8 +17,8 @@ export default function PendingReviewPage() {
         </div>
 
         <p className="text-sm text-brunProfond leading-relaxed mb-8">
-          Ta demande d’inscription a bien été transmise à l’administratrice, qui écoutera ton
-          enregistrement audio. Tu recevras un e-mail dès qu’une décision aura été prise.
+          Votre demande d’inscription a bien été transmise à l’administratrice, qui écoutera votre
+          enregistrement audio. Vous recevrez un e-mail dès qu’une décision aura été prise.
         </p>
 
         <div className="space-y-3">

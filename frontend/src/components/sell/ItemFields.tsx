@@ -56,7 +56,7 @@ export default function ItemFields({
 
   return (
     <Card className="mb-6">
-      <h2 className="font-playfair text-lg text-brunProfond mb-5">Ton article</h2>
+      <h2 className="font-playfair text-lg text-brunProfond mb-5">Votre article</h2>
 
       <Input
         label="Titre de l’annonce"
@@ -99,7 +99,7 @@ export default function ItemFields({
             error={errors.subcategoryId?.message}
             {...register('subcategoryId', { onChange: () => setValue('size', '') })}
           >
-            <option value="">{category ? 'Choisir…' : 'Choisis d’abord une catégorie'}</option>
+            <option value="">{category ? 'Choisir…' : 'Choisissez d’abord une catégorie'}</option>
             {category?.subcategories.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.label}
@@ -124,7 +124,7 @@ export default function ItemFields({
             error={errors.size?.message}
             {...register('size')}
           >
-            <option value="">{sizes.length ? 'Choisir…' : 'Choisis d’abord une sous-catégorie'}</option>
+            <option value="">{sizes.length ? 'Choisir…' : 'Choisissez d’abord une sous-catégorie'}</option>
             {sizes.map((size) => (
               <option key={size} value={size}>
                 {size}
@@ -214,8 +214,8 @@ export default function ItemFields({
       <Textarea
         label="Description"
         rows={6}
-        placeholder="Précise la coupe, la longueur, l’opacité du tissu, d’éventuels petits défauts…"
-        hint="Plus tu es sincère, plus les sœurs achètent en confiance — et moins il y a de retours."
+        placeholder="Précisez la coupe, la longueur, l’opacité du tissu, d’éventuels petits défauts…"
+        hint="Plus vous êtes sincère, plus les sœurs achètent en confiance — et moins il y a de retours."
         required
         error={errors.description?.message}
         {...register('description')}

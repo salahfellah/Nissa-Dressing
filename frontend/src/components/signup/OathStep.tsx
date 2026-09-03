@@ -22,7 +22,7 @@ export default function OathStep({
       <h1 className="text-2xl font-playfair mb-4 text-brunProfond">Une dernière étape</h1>
       <p className="text-sm mb-8 leading-relaxed text-brunProfond">
         Pour préserver la confiance entre nous, chaque candidature est accompagnée d’un court
-        message audio. Prends le temps qu’il te faut, personne d’autre que l’administratrice ne
+        message audio. Prenez le temps qu’il vous faut, personne d’autre que l’administratrice ne
         l’écoutera.
       </p>
 

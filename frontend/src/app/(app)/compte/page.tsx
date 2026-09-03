@@ -4,6 +4,7 @@ import type { ReturnRequestDto } from '@nissa/shared';
 import { CreditCard, KeyRound, LogOut, MapPin, Undo2, User as UserIcon } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import AccountDashboard from '@/components/account/AccountDashboard';
 import AccountShortcuts from '@/components/account/AccountShortcuts';
 import AddressForm from '@/components/account/AddressForm';
 import PasswordForm from '@/components/account/PasswordForm';
@@ -60,22 +61,24 @@ function AccountContent() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-      <SectionTitle subtitle={`Bienvenue ${user.prenom}, contente de te revoir.`}>
+      <SectionTitle subtitle={`Bienvenue ${user.prenom}, contente de vous revoir.`}>
         Mon compte
       </SectionTitle>
 
       {returnTo && (
-        <Alert variant="info" title="Il nous manque ton adresse de livraison">
-          Renseigne-la ci-dessous et nous te ramenons aussitôt à ton achat.
+        <Alert variant="info" title="Il nous manque votre adresse de livraison">
+          Renseignez-la ci-dessous et nous vous ramenons aussitôt à votre achat.
         </Alert>
       )}
+
+      <AccountDashboard />
 
       <AccountShortcuts />
 
       <Block
         icon={CreditCard}
         title="Compte de paiement"
-        subtitle="Nécessaire pour recevoir le paiement de tes ventes."
+        subtitle="Nécessaire pour recevoir le paiement de vos ventes."
       >
         <StripeCard />
       </Block>
@@ -87,7 +90,7 @@ function AccountContent() {
       <Block
         icon={MapPin}
         title="Adresse postale"
-        subtitle="Adresse de livraison pour tes achats, et d'expédition sur tes bordereaux de vente."
+        subtitle="Adresse de livraison pour vos achats, et d'expédition sur vos bordereaux de vente."
       >
         <AddressForm onSaved={() => returnTo && router.push(returnTo)} />
       </Block>

@@ -17,7 +17,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     const connectionString = config.get<string>('databaseUrl');
     if (!connectionString) {
       throw new Error(
-        'DATABASE_URL est absent. Copie apps/api/.env.example vers apps/api/.env et renseigne la connexion PostgreSQL.',
+        'DATABASE_URL est absent. Copie apps/api/.env.example vers apps/api/.env et renseignez la connexion PostgreSQL.',
       );
     }
 

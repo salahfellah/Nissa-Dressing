@@ -41,7 +41,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const user = context.switchToHttp().getRequest<{ user?: AuthUser }>().user;
     if (!user) {
       if (isPublic) return true;
-      throw new UnauthorizedException('Connecte-toi pour accéder à cet espace.');
+      throw new UnauthorizedException('Connectez-vous pour accéder à cet espace.');
     }
 
     const roles = this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [
@@ -60,7 +60,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     // à parcourir le tunnel d'inscription des membres.
     if (memberOnly && user.status !== 'MEMBER' && user.role !== 'ADMIN') {
       throw new ForbiddenException({
-        message: 'Ton inscription n’est pas encore tout à fait terminée.',
+        message: 'Votre inscription n’est pas encore tout à fait terminée.',
         memberStatus: user.status,
       });
     }
@@ -70,7 +70,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   handleRequest<TUser = AuthUser>(err: unknown, user: TUser): TUser {
     if (err || !user) {
-      throw err instanceof Error ? err : new UnauthorizedException('Connecte-toi pour accéder à cet espace.');
+      throw err instanceof Error ? err : new UnauthorizedException('Connectez-vous pour accéder à cet espace.');
     }
     return user;
   }
